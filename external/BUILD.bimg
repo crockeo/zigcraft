@@ -1,0 +1,21 @@
+cc_library(
+    name = "bimg",
+    visibility = ["//visibility:public"],
+    srcs = [
+        "src/image.cpp",
+        "src/image_cubemap_filter.cpp",
+        "src/image_decode.cpp",
+        "src/image_encode.cpp",
+        "src/image_gnf.cpp",
+    ],
+    hdrs = glob(["**"]),
+    includes = [
+        "3rdparty",
+	"3rdparty/iqa/include",
+        "include",
+    ],
+    deps = [
+	"@astc-codec//:astc_codec",
+        "@bx//:bx",
+    ],
+)

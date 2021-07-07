@@ -1,0 +1,9 @@
+bazel-bin
+bazel-cppcraft
+bazel-out
+bazel-testlogs
+compile_commands.json
+
+# don't commit compiled shaders;
+# instead make them with build_shaders
+shaders/*.bin

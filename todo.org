@@ -1,0 +1,3 @@
+* TODOs
+** Build shadercRelease with Bazel
+** Build shader.bins with shadercRelease target with bazel (genrule some stuff)
