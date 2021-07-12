@@ -21,31 +21,15 @@ using namespace cppcraft;
 int WIDTH = 640;
 int HEIGHT = 480;
 
-std::string loadFile(std::string file_path) {
-  std::ifstream file(file_path);
-  std::string str;
-
-  file.seekg(0, std::ios::end);
-  int64_t pos = file.tellg();
-  if (pos < 0) {
-    throw std::runtime_error("failed to open " + file_path);
-  }
-  str.reserve(file.tellg());
-  file.seekg(0, std::ios::beg);
-
-  str.assign(std::istreambuf_iterator<char>(file),
-             std::istreambuf_iterator<char>());
-  return str;
-}
-
 bgfx::ShaderHandle loadShader(std::string file_path) {
-  auto contents = loadFile(file_path);
-  auto handle = bgfx::alloc(contents.size());
-  bgfx::copy(contents.c_str(), contents.size() + 1);
+  std::ifstream file(file_path, std::ios::binary);
+  if (!file.good()) {
+    throw std::runtime_error("cannot read shader");
+  }
+  std::vector<unsigned char> contents(std::istreambuf_iterator<char>(file), {});
 
+  auto handle = bgfx::copy(&contents[0], contents.size());
   auto shader = bgfx::createShader(handle);
-  // TODO: figure out why this crashes
-  // bgfx::setName(shader, file_path.c_str());
   return shader;
 }
 
@@ -81,13 +65,21 @@ struct PosColorVertex {
 bool PosColorVertex::ms_layout_initialized = false;
 bgfx::VertexLayout PosColorVertex::ms_layout;
 
-static PosColorVertex vertex_data[] = {{0.5f, 0.5f, 0.0f, 0xff0000ff},
-                                       {0.5f, -0.5f, 0.0f, 0xff0000ff},
-                                       {-0.5f, -0.5f, 0.0f, 0xff00ff00},
-                                       {-0.5f, 0.5f, 0.0f, 0xff00ff00}};
+static PosColorVertex vertex_data[] = {
+    {-1.0f, 1.0f, 1.0f, 0xff000000},   {1.0f, 1.0f, 1.0f, 0xff0000ff},
+    {-1.0f, -1.0f, 1.0f, 0xff00ff00},  {1.0f, -1.0f, 1.0f, 0xff00ffff},
+    {-1.0f, 1.0f, -1.0f, 0xffff0000},  {1.0f, 1.0f, -1.0f, 0xffff00ff},
+    {-1.0f, -1.0f, -1.0f, 0xffffff00}, {1.0f, -1.0f, -1.0f, 0xffffffff},
+};
 
-static uint16_t index_data[] = {
-    0, 1, 3, 1, 2, 3,
+static const uint16_t index_data[] = {
+    0, 1, 2,
+    1, 3, 2, 4, 6, 5,
+    5, 6, 7, 0, 2, 4,
+    4, 2, 6, 1, 5, 3,
+    5, 7, 3, 0, 4, 1,
+    4, 5, 1, 2, 3, 6,
+    6, 3, 7,
 };
 
 bgfx::PlatformData getPlatformData(SDL_Window *window) {
@@ -141,17 +133,13 @@ public:
     bgfx::setViewRect(0, 0, 0, WIDTH, HEIGHT);
     bgfx::touch(0);
 
-    float mtx[16];
-    bx::mtxRotateY(mtx, 0.0f);
-
     auto now = std::chrono::steady_clock::now();
     float time_sec =
         std::chrono::duration_cast<std::chrono::milliseconds>(now - start)
             .count() /
         1000.f;
-    mtx[12] = bx::sin(time_sec);
-    mtx[13] = bx::cos(time_sec);
-    mtx[14] = 3 * bx::sin(time_sec / 3.0f);
+    float mtx[16];
+    bx::mtxRotateXY(mtx, time_sec, time_sec);
 
     bgfx::setTransform(mtx);
     bgfx::setVertexBuffer(0, _vertex_buffer);
@@ -206,7 +194,6 @@ int main(int argc, char *args[]) {
   Renderer renderer;
 
   bgfx::reset(WIDTH, HEIGHT, BGFX_RESET_VSYNC);
-  bgfx::setDebug(BGFX_DEBUG_TEXT | BGFX_DEBUG_STATS);
   bgfx::setViewRect(0, 0, 0, uint16_t(WIDTH), uint16_t(HEIGHT));
   bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x443355FF, 1.0f,
                      0);
