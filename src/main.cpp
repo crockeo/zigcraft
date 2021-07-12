@@ -73,13 +73,8 @@ static PosColorVertex vertex_data[] = {
 };
 
 static const uint16_t index_data[] = {
-    0, 1, 2,
-    1, 3, 2, 4, 6, 5,
-    5, 6, 7, 0, 2, 4,
-    4, 2, 6, 1, 5, 3,
-    5, 7, 3, 0, 4, 1,
-    4, 5, 1, 2, 3, 6,
-    6, 3, 7,
+    0, 1, 2, 1, 3, 2, 4, 6, 5, 5, 6, 7, 0, 2, 4, 4, 2, 6,
+    1, 5, 3, 5, 7, 3, 0, 4, 1, 4, 5, 1, 2, 3, 6, 6, 3, 7,
 };
 
 bgfx::PlatformData getPlatformData(SDL_Window *window) {
@@ -90,9 +85,14 @@ bgfx::PlatformData getPlatformData(SDL_Window *window) {
   }
 
   bgfx::PlatformData pd;
-  // TODO: do other platforms and not just macOS
+  // TODO: implement for
+  //   - linux / BSD (x11 and wayland?)
+  //   - windows
+#if BX_PLATFORM_OSX
   pd.ndt = nullptr;
   pd.nwh = wmi.info.cocoa.window;
+#endif
+
   pd.context = nullptr;
   pd.backBuffer = nullptr;
   pd.backBufferDS = nullptr;
