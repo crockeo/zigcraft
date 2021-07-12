@@ -37,6 +37,8 @@ cc_library(
     defines = [
         "BGFX_CONFIG_RENDERER_VULKAN=0",
         "BGFX_CONFIG_RENDERER_METAL=1",
+	# emergency "oh shit i need to debug" lever
+        # "BGFX_CONFIG_DEBUG=1",
     ],
     includes = [
         "3rdparty",

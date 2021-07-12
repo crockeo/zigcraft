@@ -4,6 +4,7 @@ bazel-out
 bazel-testlogs
 compile_commands.json
 
-# don't commit compiled shaders;
-# instead make them with build_shaders
+# don't commit compiled resources
+# like shaders or textures
+res/*.ktx
 shaders/*.bin

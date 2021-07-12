@@ -68,17 +68,24 @@ bgfx::ProgramHandle loadProgram(std::string vertex_file_path,
   return bgfx::createProgram(vertex_shader, fragment_shader, true);
 }
 
+bgfx::TextureHandle loadTexture(std::string file_path) {
+  auto handle = loadBinaryFileMem(file_path);
+  return bgfx::createTexture(handle, BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT | BGFX_SAMPLER_MIP_POINT);
+}
+
 struct PosColorVertex {
   float m_x;
   float m_y;
   float m_z;
-  uint32_t m_abgr;
+
+  float t_x;
+  float t_y;
 
   static void init() {
     if (!PosColorVertex::ms_layout_initialized) {
       PosColorVertex::ms_layout.begin()
           .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-          .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+	  .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
           .end();
     }
     PosColorVertex::ms_layout_initialized = true;
@@ -94,10 +101,10 @@ bool PosColorVertex::ms_layout_initialized = false;
 bgfx::VertexLayout PosColorVertex::ms_layout;
 
 static PosColorVertex vertex_data[] = {
-    {-1.0f, 1.0f, 1.0f, 0xff000000},   {1.0f, 1.0f, 1.0f, 0xff0000ff},
-    {-1.0f, -1.0f, 1.0f, 0xff00ff00},  {1.0f, -1.0f, 1.0f, 0xff00ffff},
-    {-1.0f, 1.0f, -1.0f, 0xffff0000},  {1.0f, 1.0f, -1.0f, 0xffff00ff},
-    {-1.0f, -1.0f, -1.0f, 0xffffff00}, {1.0f, -1.0f, -1.0f, 0xffffffff},
+  {-1.0f, 1.0f, 1.0f, 0.0f, 0.0f},   {1.0f, 1.0f, 1.0f, 1.0f, 0.0f},
+  {-1.0f, -1.0f, 1.0f, 0.0f, 1.0f},  {1.0f, -1.0f, 1.0f, 1.0f, 1.0f},
+  {-1.0f, 1.0f, -1.0f, 0.0f, 0.0f},  {1.0f, 1.0f, -1.0f, 0.0f, 0.0f},
+  {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f}, {1.0f, -1.0f, -1.0f, 0.0f, 0.0f},
 };
 
 static const uint16_t index_data[] = {
@@ -140,11 +147,16 @@ public:
 
     _index_buffer =
         bgfx::createIndexBuffer(bgfx::makeRef(index_data, sizeof(index_data)));
+
+    _uniform = bgfx::createUniform("s_texColor", bgfx::UniformType::Sampler);
+    _texture = loadTexture("res/placeholder.ktx");
   }
 
   ~Renderer() {
     bgfx::destroy(_vertex_buffer);
     bgfx::destroy(_index_buffer);
+    bgfx::destroy(_uniform);
+    bgfx::destroy(_texture);
   }
 
   void render(std::chrono::time_point<std::chrono::steady_clock> start) {
@@ -170,6 +182,7 @@ public:
     bx::mtxRotateXY(mtx, time_sec, time_sec);
 
     bgfx::setTransform(mtx);
+    bgfx::setTexture(0, _uniform, _texture);
     bgfx::setVertexBuffer(0, _vertex_buffer);
     bgfx::setIndexBuffer(_index_buffer);
     bgfx::setState(BGFX_STATE_DEFAULT);
@@ -181,6 +194,9 @@ private:
   bgfx::ProgramHandle _program;
   bgfx::VertexBufferHandle _vertex_buffer;
   bgfx::IndexBufferHandle _index_buffer;
+
+  bgfx::UniformHandle _uniform;
+  bgfx::TextureHandle _texture;
 };
 
 int main(int argc, char *args[]) {
