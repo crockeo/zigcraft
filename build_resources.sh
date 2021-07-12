@@ -2,7 +2,9 @@
 
 set -e
 
-shaderc="./dependencies/bgfx/.build/osx-x64/bin/shadercRelease"
+bin_dir="./dependencies/bgfx/.build/osx-x64/bin"
+shaderc="$bin_dir/shadercRelease"
+texturec="$bin_dir/texturecRelease"
 
 $shaderc \
     -i dependencies/bgfx/src \
@@ -21,3 +23,10 @@ $shaderc \
     --platform osx \
     --profile metal \
     --verbose
+
+for file in $(ls res/*.png); do
+    ktx_file=$(echo $file | sed "s/png/ktx/")
+    $texturec \
+	-f "$file" \
+	-o "$ktx_file"
+done

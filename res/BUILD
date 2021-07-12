@@ -1,7 +1,7 @@
 filegroup(
     name = "res",
     visibility = ["//visibility:public"],
-    srcs = [
-        ":placeholder.ktx",
-    ],
+    srcs = glob([
+        "*.ktx",
+    ]),
 )

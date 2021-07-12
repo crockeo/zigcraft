@@ -149,7 +149,7 @@ public:
         bgfx::createIndexBuffer(bgfx::makeRef(index_data, sizeof(index_data)));
 
     _uniform = bgfx::createUniform("s_texColor", bgfx::UniformType::Sampler);
-    _texture = loadTexture("res/placeholder.ktx");
+    _texture = loadTexture("res/cobblestone.ktx");
   }
 
   ~Renderer() {
