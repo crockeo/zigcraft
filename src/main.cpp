@@ -40,12 +40,20 @@ std::unique_ptr<std::vector<uint8_t>> loadBinaryFile(std::string file_path) {
   return contents;
 }
 
+void loadBinaryFileMem_Release(void* _, void* raw_shared_contents) {
+  auto shared_contents = static_cast<std::shared_ptr<std::vector<uint8_t>>*>(raw_shared_contents);
+  delete shared_contents;
+}
+
 const bgfx::Memory* loadBinaryFileMem(std::string file_path) {
   auto contents = loadBinaryFile(file_path);
-  // TODO: turn this into a makeRef with a share_ptr
-  // so we just decrement the reference when we're done
-  // instead of having to copy
-  auto handle = bgfx::copy(&(*contents)[0], contents->size());
+  auto shared_contents = new std::shared_ptr<std::vector<uint8_t>>(std::move(contents));
+  auto handle = bgfx::makeRef(
+    &(**shared_contents)[0],
+    (*shared_contents)->size(),
+    &loadBinaryFileMem_Release,
+    shared_contents
+  );
   return handle;
 }
 
