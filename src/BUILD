@@ -3,10 +3,11 @@ cc_binary(
     visibility = ["//visibility:public"],
     srcs = [
         "main.cpp",
-	"guard.hpp",
+        "guard.hpp",
     ],
     data = [
-         "//shaders",
+        "//shaders",
+        "//res",
     ],
     deps = [
         "@bgfx//:bgfx_macos",

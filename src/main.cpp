@@ -1,18 +1,19 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <streambuf>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "SDL2/SDL.h"
-#include "SDL2/SDL_syswm.h"
 #include "bgfx/bgfx.h"
 #include "bgfx/platform.h"
 #include "bx/math.h"
 #include "bx/thread.h"
+#include "SDL2/SDL.h"
+#include "SDL2/SDL_syswm.h"
 
 #include "guard.hpp"
 
@@ -21,16 +22,35 @@ using namespace cppcraft;
 int WIDTH = 640;
 int HEIGHT = 480;
 
-bgfx::ShaderHandle loadShader(std::string file_path) {
+// returns a ptr to the underlying data
+// because we expect to load large binary files
+// (e.g. models and textures)
+// and don't want to pass it around on the stack
+std::unique_ptr<std::vector<uint8_t>> loadBinaryFile(std::string file_path) {
   std::ifstream file(file_path, std::ios::binary);
   if (!file.good()) {
-    throw std::runtime_error("cannot read shader");
+    // TODO: also change this to log the file_path when i get this all working
+    throw std::runtime_error("cannot read file");
   }
-  std::vector<unsigned char> contents(std::istreambuf_iterator<char>(file), {});
+  // TODO: figure out how to set -std=c++20 in bazel
+  // so that i can use make_unique for this
+  std::unique_ptr<std::vector<uint8_t>> contents(
+    new std::vector<uint8_t>(std::istreambuf_iterator<char>(file), {})
+  );
+  return contents;
+}
 
-  auto handle = bgfx::copy(&contents[0], contents.size());
-  auto shader = bgfx::createShader(handle);
-  return shader;
+const bgfx::Memory* loadBinaryFileMem(std::string file_path) {
+  auto contents = loadBinaryFile(file_path);
+  // TODO: turn this into a makeRef with a share_ptr
+  // so we just decrement the reference when we're done
+  // instead of having to copy
+  auto handle = bgfx::copy(&(*contents)[0], contents->size());
+  return handle;
+}
+
+bgfx::ShaderHandle loadShader(std::string file_path) {
+  return bgfx::createShader(loadBinaryFileMem(file_path));
 }
 
 bgfx::ProgramHandle loadProgram(std::string vertex_file_path,
