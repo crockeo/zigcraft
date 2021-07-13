@@ -184,28 +184,52 @@ public:
 
     uint16_t indices[] = {
         // top
-        0, 1, 2,
-        0, 2, 3,
+        0,
+        1,
+        2,
+        0,
+        2,
+        3,
 
         // bottom
-        6, 5, 4,
-        7, 6, 4,
+        6,
+        5,
+        4,
+        7,
+        6,
+        4,
 
         // back
-        8, 9, 10,
-        8, 10, 11,
+        8,
+        9,
+        10,
+        8,
+        10,
+        11,
 
         // front
-        14, 13, 12,
-        15, 14, 12,
+        14,
+        13,
+        12,
+        15,
+        14,
+        12,
 
         // left
-        16, 17, 18,
-        16, 18, 19,
+        16,
+        17,
+        18,
+        16,
+        18,
+        19,
 
         // left
-        22, 21, 20,
-        23, 22, 20,
+        22,
+        21,
+        20,
+        23,
+        22,
+        20,
     };
 
     Vertex::init();
@@ -233,7 +257,6 @@ public:
     bgfx::setIndexBuffer(_indices);
     bgfx::setState(BGFX_STATE_DEFAULT);
     bgfx::submit(0, _program);
-    bgfx::frame();
   }
 
 private:
@@ -276,7 +299,11 @@ class Renderer {
 public:
   Renderer()
       : _grass_cube("res/grass_top.ktx", "res/grass_side.ktx", "res/dirt.ktx",
-                    1.0f, 1.0f, 1.0f) {}
+                    2.0f, 2.0f, 2.0f),
+        _cobblestone_cube("res/cobblestone.ktx", "res/cobblestone.ktx",
+                          "res/cobblestone.ktx", 2.0f, 2.0f, 2.0f),
+        _dirt_cube("res/dirt.ktx", "res/dirt.ktx", "res/dirt.ktx", 2.0f, 2.0f,
+                   2.0f) {}
 
   void render(std::chrono::time_point<std::chrono::steady_clock> start) {
     const bx::Vec3 at = {0.0f, 0.0f, 0.0f};
@@ -298,16 +325,22 @@ public:
             .count() /
         1000.f;
 
-    float mtx[16];
-    bx::mtxRotateXY(mtx, time_sec * 0.7, time_sec);
-    mtx[11] = 0.0f;
-    mtx[12] = 0.0f;
-    mtx[13] = 0.0f;
-    _grass_cube.render(mtx);
+    Cube* cubes[] = {&_grass_cube, &_cobblestone_cube, &_dirt_cube};
+    for (size_t i = 0; i < 3; i++) {
+      float mtx[16];
+      bx::mtxRotateXY(mtx, time_sec * 0.7 + i, time_sec + i);
+      mtx[12] = ((float)i - 1) * 3.0f;
+      mtx[13] = 0.0f;
+      mtx[14] = 0.0f;
+      cubes[i]->render(mtx);
+    }
+    bgfx::frame();
   }
 
 private:
   Cube _grass_cube;
+  Cube _cobblestone_cube;
+  Cube _dirt_cube;
 };
 
 int main(int argc, char *args[]) {
