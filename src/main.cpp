@@ -3,17 +3,18 @@
 #include <iostream>
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <streambuf>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "SDL2/SDL.h"
+#include "SDL2/SDL_syswm.h"
 #include "bgfx/bgfx.h"
 #include "bgfx/platform.h"
 #include "bx/math.h"
 #include "bx/thread.h"
-#include "SDL2/SDL.h"
-#include "SDL2/SDL_syswm.h"
 
 #include "guard.hpp"
 
@@ -35,25 +36,23 @@ std::unique_ptr<std::vector<uint8_t>> loadBinaryFile(std::string file_path) {
   // TODO: figure out how to set -std=c++20 in bazel
   // so that i can use make_unique for this
   std::unique_ptr<std::vector<uint8_t>> contents(
-    new std::vector<uint8_t>(std::istreambuf_iterator<char>(file), {})
-  );
+      new std::vector<uint8_t>(std::istreambuf_iterator<char>(file), {}));
   return contents;
 }
 
-void loadBinaryFileMem_Release(void* _, void* raw_shared_contents) {
-  auto shared_contents = static_cast<std::shared_ptr<std::vector<uint8_t>>*>(raw_shared_contents);
+void loadBinaryFileMem_Release(void *_, void *raw_shared_contents) {
+  auto shared_contents =
+      static_cast<std::shared_ptr<std::vector<uint8_t>> *>(raw_shared_contents);
   delete shared_contents;
 }
 
-const bgfx::Memory* loadBinaryFileMem(std::string file_path) {
+const bgfx::Memory *loadBinaryFileMem(std::string file_path) {
   auto contents = loadBinaryFile(file_path);
-  auto shared_contents = new std::shared_ptr<std::vector<uint8_t>>(std::move(contents));
-  auto handle = bgfx::makeRef(
-    &(**shared_contents)[0],
-    (*shared_contents)->size(),
-    &loadBinaryFileMem_Release,
-    shared_contents
-  );
+  auto shared_contents =
+      new std::shared_ptr<std::vector<uint8_t>>(std::move(contents));
+  auto handle =
+      bgfx::makeRef(&(**shared_contents)[0], (*shared_contents)->size(),
+                    &loadBinaryFileMem_Release, shared_contents);
   return handle;
 }
 
@@ -70,13 +69,20 @@ bgfx::ProgramHandle loadProgram(std::string vertex_file_path,
 
 bgfx::TextureHandle loadTexture(std::string file_path) {
   auto handle = loadBinaryFileMem(file_path);
-  return bgfx::createTexture(handle, BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT | BGFX_SAMPLER_MIP_POINT);
+  return bgfx::createTexture(handle, BGFX_SAMPLER_MIN_POINT |
+                                         BGFX_SAMPLER_MAG_POINT |
+                                         BGFX_SAMPLER_MIP_POINT);
 }
 
 class Texture {
 public:
-  Texture(std::string file_path) {
-    _uniform = bgfx::createUniform("s_texColor", bgfx::UniformType::Sampler);
+  Texture(size_t index, std::string file_path) {
+    _index = index;
+    std::ostringstream fmt;
+    fmt << "s_texColor" << index;
+    auto name = fmt.str();
+
+    _uniform = bgfx::createUniform(name.c_str(), bgfx::UniformType::Sampler);
     _handle = loadTexture(file_path);
   }
 
@@ -85,16 +91,15 @@ public:
     bgfx::destroy(_handle);
   }
 
-  Texture(const Texture&) = delete;
-  Texture& operator=(const Texture&) = delete;
+  Texture(const Texture &) = delete;
+  Texture &operator=(const Texture &) = delete;
 
   // TODO: come up with a better name
   // that documents what this actually does
-  void use() {
-    bgfx::setTexture(0, _uniform, _handle);
-  }
+  void use() { bgfx::setTexture(_index, _uniform, _handle); }
 
 private:
+  size_t _index;
   bgfx::UniformHandle _uniform;
   bgfx::TextureHandle _handle;
 };
@@ -117,10 +122,10 @@ public:
     static void init() {
       if (!initialized) {
         layout.begin()
-          .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-          .add(bgfx::Attrib::Indices, 4, bgfx::AttribType::Uint8)
-          .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
-          .end();
+            .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+            .add(bgfx::Attrib::Indices, 4, bgfx::AttribType::Uint8)
+            .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+            .end();
         initialized = true;
       }
     }
@@ -129,36 +134,85 @@ public:
     static bgfx::VertexLayout layout;
   };
 
-  Cube(std::string texture_file_path,
-       float width,
-       float height,
-       float depth)
-    : _texture(texture_file_path) {
+  Cube(std::string top_file_path, std::string side_file_path,
+       std::string bottom_file_path, float width, float height, float depth)
+      : _top_texture(0, top_file_path), _side_texture(1, side_file_path),
+        _bottom_texture(2, bottom_file_path) {
     width /= 2;
     height /= 2;
     depth /= 2;
 
-    // reduce the total # of vertices
+    // TODO: reduce the total # of vertices
     // to compress data
     Vertex vertices[] = {
-      {-1.0f, 1.0f, 1.0f, 0, 0.0f, 0.0f},   {1.0f, 1.0f, 1.0f, 0, 1.0f, 0.0f},
-      {-1.0f, -1.0f, 1.0f, 0, 0.0f, 1.0f},  {1.0f, -1.0f, 1.0f, 0, 1.0f, 1.0f},
-      {-1.0f, 1.0f, -1.0f, 0, 0.0f, 0.0f},  {1.0f, 1.0f, -1.0f, 0, 0.0f, 0.0f},
-      {-1.0f, -1.0f, -1.0f, 0, 0.0f, 0.0f}, {1.0f, -1.0f, -1.0f, 0, 0.0f, 0.0f},
+        // top
+        {-width, height, -depth, 0, 0.0f, 0.0f},
+        {width, height, -depth, 0, 1.0f, 0.0f},
+        {width, height, depth, 0, 1.0f, 1.0f},
+        {-width, height, depth, 0, 0.0f, 1.0f},
+
+        // bottom
+        {-width, -height, -depth, 2, 0.0f, 0.0f},
+        {width, -height, -depth, 2, 1.0f, 0.0f},
+        {width, -height, depth, 2, 1.0f, 1.0f},
+        {-width, -height, depth, 2, 0.0f, 1.0f},
+
+        // back
+        {-width, -height, -depth, 1, 0.0f, 1.0f},
+        {width, -height, -depth, 1, 1.0, 1.0f},
+        {width, height, -depth, 1, 1.0, 0.0f},
+        {-width, height, -depth, 1, 0.0f, 0.0f},
+
+        // front
+        {-width, -height, depth, 1, 0.0f, 1.0f},
+        {width, -height, depth, 1, 1.0, 1.0f},
+        {width, height, depth, 1, 1.0, 0.0f},
+        {-width, height, depth, 1, 0.0f, 0.0f},
+
+        // left
+        {-width, -height, -depth, 1, 0.0f, 1.0f},
+        {-width, height, -depth, 1, 0.0f, 0.0f},
+        {-width, height, depth, 1, 1.0f, 0.0f},
+        {-width, -height, depth, 1, 1.0f, 1.0f},
+
+        // right
+        {width, -height, -depth, 1, 0.0f, 1.0f},
+        {width, height, -depth, 1, 0.0f, 0.0f},
+        {width, height, depth, 1, 1.0f, 0.0f},
+        {width, -height, depth, 1, 1.0f, 1.0f},
     };
 
     uint16_t indices[] = {
-        0, 1, 2, 1, 3, 2, 4, 6, 5, 5, 6, 7, 0, 2, 4, 4, 2, 6,
-        1, 5, 3, 5, 7, 3, 0, 4, 1, 4, 5, 1, 2, 3, 6, 6, 3, 7,
+        // top
+        0, 1, 2,
+        0, 2, 3,
+
+        // bottom
+        6, 5, 4,
+        7, 6, 4,
+
+        // back
+        8, 9, 10,
+        8, 10, 11,
+
+        // front
+        14, 13, 12,
+        15, 14, 12,
+
+        // left
+        16, 17, 18,
+        16, 18, 19,
+
+        // left
+        22, 21, 20,
+        23, 22, 20,
     };
 
     Vertex::init();
     _program = loadProgram("shaders/vertex.bin", "shaders/fragment.bin");
-    _vertices = bgfx::createVertexBuffer(
-        bgfx::copy(vertices, sizeof(vertices)),
-        Vertex::layout);
-    _indices =
-        bgfx::createIndexBuffer(bgfx::copy(indices, sizeof(indices)));
+    _vertices = bgfx::createVertexBuffer(bgfx::copy(vertices, sizeof(vertices)),
+                                         Vertex::layout);
+    _indices = bgfx::createIndexBuffer(bgfx::copy(indices, sizeof(indices)));
   }
 
   ~Cube() {
@@ -167,12 +221,14 @@ public:
     bgfx::destroy(_indices);
   }
 
-  Cube(const Cube&) = delete;
-  Cube& operator=(const Cube&) = delete;
+  Cube(const Cube &) = delete;
+  Cube &operator=(const Cube &) = delete;
 
   void render(float mtx[16]) {
     bgfx::setTransform(mtx);
-    _texture.use();
+    _top_texture.use();
+    _side_texture.use();
+    _bottom_texture.use();
     bgfx::setVertexBuffer(0, _vertices);
     bgfx::setIndexBuffer(_indices);
     bgfx::setState(BGFX_STATE_DEFAULT);
@@ -185,7 +241,9 @@ private:
   bgfx::VertexBufferHandle _vertices;
   bgfx::IndexBufferHandle _indices;
 
-  Texture _texture;
+  Texture _top_texture;
+  Texture _side_texture;
+  Texture _bottom_texture;
 };
 
 bool Cube::Vertex::initialized = false;
@@ -217,7 +275,8 @@ bgfx::PlatformData getPlatformData(SDL_Window *window) {
 class Renderer {
 public:
   Renderer()
-    : _grass_cube("res/cobblestone.ktx", 1.0f, 1.0f, 1.0f) {}
+      : _grass_cube("res/grass_top.ktx", "res/grass_side.ktx", "res/dirt.ktx",
+                    1.0f, 1.0f, 1.0f) {}
 
   void render(std::chrono::time_point<std::chrono::steady_clock> start) {
     const bx::Vec3 at = {0.0f, 0.0f, 0.0f};
@@ -240,7 +299,7 @@ public:
         1000.f;
 
     float mtx[16];
-    bx::mtxRotateXY(mtx, time_sec, time_sec);
+    bx::mtxRotateXY(mtx, time_sec * 0.7, time_sec);
     mtx[11] = 0.0f;
     mtx[12] = 0.0f;
     mtx[13] = 0.0f;
