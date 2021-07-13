@@ -73,44 +73,121 @@ bgfx::TextureHandle loadTexture(std::string file_path) {
   return bgfx::createTexture(handle, BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT | BGFX_SAMPLER_MIP_POINT);
 }
 
-struct PosColorVertex {
-  float m_x;
-  float m_y;
-  float m_z;
-
-  float t_x;
-  float t_y;
-
-  static void init() {
-    if (!PosColorVertex::ms_layout_initialized) {
-      PosColorVertex::ms_layout.begin()
-          .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-	  .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
-          .end();
-    }
-    PosColorVertex::ms_layout_initialized = true;
+class Texture {
+public:
+  Texture(std::string file_path) {
+    _uniform = bgfx::createUniform("s_texColor", bgfx::UniformType::Sampler);
+    _handle = loadTexture(file_path);
   }
 
-  static bool ms_layout_initialized;
-  static bgfx::VertexLayout ms_layout;
+  ~Texture() {
+    bgfx::destroy(_uniform);
+    bgfx::destroy(_handle);
+  }
+
+  Texture(const Texture&) = delete;
+  Texture& operator=(const Texture&) = delete;
+
+  // TODO: come up with a better name
+  // that documents what this actually does
+  void use() {
+    bgfx::setTexture(0, _uniform, _handle);
+  }
+
+private:
+  bgfx::UniformHandle _uniform;
+  bgfx::TextureHandle _handle;
 };
 
-// ms_layout_initialized to false at first
-// but it can't be done so in the class because C++
-bool PosColorVertex::ms_layout_initialized = false;
-bgfx::VertexLayout PosColorVertex::ms_layout;
+// TODO: think more about loading a cube
+// that has the same texture on multiple sides
+// how do we want to do the loading? the destroying? etc.
+class Cube {
+public:
+  // TODO: think about a compressed index format for this
+  struct Vertex {
+    float x;
+    float y;
+    float z;
 
-static PosColorVertex vertex_data[] = {
-  {-1.0f, 1.0f, 1.0f, 0.0f, 0.0f},   {1.0f, 1.0f, 1.0f, 1.0f, 0.0f},
-  {-1.0f, -1.0f, 1.0f, 0.0f, 1.0f},  {1.0f, -1.0f, 1.0f, 1.0f, 1.0f},
-  {-1.0f, 1.0f, -1.0f, 0.0f, 0.0f},  {1.0f, 1.0f, -1.0f, 0.0f, 0.0f},
-  {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f}, {1.0f, -1.0f, -1.0f, 0.0f, 0.0f},
+    float tex_x;
+    float tex_y;
+
+    static void init() {
+      if (!initialized) {
+        layout.begin()
+          .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+          .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+          .end();
+        initialized = true;
+      }
+    }
+
+    static bool initialized;
+    static bgfx::VertexLayout layout;
+  };
+
+  Cube(std::string texture_file_path,
+       float width,
+       float height,
+       float depth)
+    : _texture(texture_file_path) {
+    width /= 2;
+    height /= 2;
+    depth /= 2;
+
+    // reduce the total # of vertices
+    // to compress data
+    Vertex vertices[] = {
+      {-1.0f, 1.0f, 1.0f, 0.0f, 0.0f},   {1.0f, 1.0f, 1.0f, 1.0f, 0.0f},
+      {-1.0f, -1.0f, 1.0f, 0.0f, 1.0f},  {1.0f, -1.0f, 1.0f, 1.0f, 1.0f},
+      {-1.0f, 1.0f, -1.0f, 0.0f, 0.0f},  {1.0f, 1.0f, -1.0f, 0.0f, 0.0f},
+      {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f}, {1.0f, -1.0f, -1.0f, 0.0f, 0.0f},
+    };
+
+    uint16_t indices[] = {
+        0, 1, 2, 1, 3, 2, 4, 6, 5, 5, 6, 7, 0, 2, 4, 4, 2, 6,
+        1, 5, 3, 5, 7, 3, 0, 4, 1, 4, 5, 1, 2, 3, 6, 6, 3, 7,
+    };
+
+    Vertex::init();
+    _program = loadProgram("shaders/vertex.bin", "shaders/fragment.bin");
+    _vertices = bgfx::createVertexBuffer(
+        bgfx::copy(vertices, sizeof(vertices)),
+        Vertex::layout);
+    _indices =
+        bgfx::createIndexBuffer(bgfx::copy(indices, sizeof(indices)));
+  }
+
+  ~Cube() {
+    bgfx::destroy(_program);
+    bgfx::destroy(_vertices);
+    bgfx::destroy(_indices);
+  }
+
+  Cube(const Cube&) = delete;
+  Cube& operator=(const Cube&) = delete;
+
+  void render(float mtx[16]) {
+    bgfx::setTransform(mtx);
+    _texture.use();
+    bgfx::setVertexBuffer(0, _vertices);
+    bgfx::setIndexBuffer(_indices);
+    bgfx::setState(BGFX_STATE_DEFAULT);
+    bgfx::submit(0, _program);
+    bgfx::frame();
+  }
+
+private:
+  bgfx::ProgramHandle _program;
+  bgfx::VertexBufferHandle _vertices;
+  bgfx::IndexBufferHandle _indices;
+
+  Texture _texture;
 };
 
-static const uint16_t index_data[] = {
-    0, 1, 2, 1, 3, 2, 4, 6, 5, 5, 6, 7, 0, 2, 4, 4, 2, 6,
-    1, 5, 3, 5, 7, 3, 0, 4, 1, 4, 5, 1, 2, 3, 6, 6, 3, 7,
-};
+bool Cube::Vertex::initialized = false;
+bgfx::VertexLayout Cube::Vertex::layout;
 
 bgfx::PlatformData getPlatformData(SDL_Window *window) {
   SDL_SysWMinfo wmi;
@@ -137,27 +214,8 @@ bgfx::PlatformData getPlatformData(SDL_Window *window) {
 
 class Renderer {
 public:
-  Renderer() {
-    _program = loadProgram("shaders/vertex.bin", "shaders/fragment.bin");
-
-    PosColorVertex::init();
-    _vertex_buffer = bgfx::createVertexBuffer(
-        bgfx::makeRef(vertex_data, sizeof(vertex_data)),
-        PosColorVertex::ms_layout);
-
-    _index_buffer =
-        bgfx::createIndexBuffer(bgfx::makeRef(index_data, sizeof(index_data)));
-
-    _uniform = bgfx::createUniform("s_texColor", bgfx::UniformType::Sampler);
-    _texture = loadTexture("res/cobblestone.ktx");
-  }
-
-  ~Renderer() {
-    bgfx::destroy(_vertex_buffer);
-    bgfx::destroy(_index_buffer);
-    bgfx::destroy(_uniform);
-    bgfx::destroy(_texture);
-  }
+  Renderer()
+    : _grass_cube("res/cobblestone.ktx", 1.0f, 1.0f, 1.0f) {}
 
   void render(std::chrono::time_point<std::chrono::steady_clock> start) {
     const bx::Vec3 at = {0.0f, 0.0f, 0.0f};
@@ -178,25 +236,17 @@ public:
         std::chrono::duration_cast<std::chrono::milliseconds>(now - start)
             .count() /
         1000.f;
+
     float mtx[16];
     bx::mtxRotateXY(mtx, time_sec, time_sec);
-
-    bgfx::setTransform(mtx);
-    bgfx::setTexture(0, _uniform, _texture);
-    bgfx::setVertexBuffer(0, _vertex_buffer);
-    bgfx::setIndexBuffer(_index_buffer);
-    bgfx::setState(BGFX_STATE_DEFAULT);
-    bgfx::submit(0, _program);
-    bgfx::frame();
+    mtx[11] = 0.0f;
+    mtx[12] = 0.0f;
+    mtx[13] = 0.0f;
+    _grass_cube.render(mtx);
   }
 
 private:
-  bgfx::ProgramHandle _program;
-  bgfx::VertexBufferHandle _vertex_buffer;
-  bgfx::IndexBufferHandle _index_buffer;
-
-  bgfx::UniformHandle _uniform;
-  bgfx::TextureHandle _texture;
+  Cube _grass_cube;
 };
 
 int main(int argc, char *args[]) {
