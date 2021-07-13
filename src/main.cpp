@@ -110,6 +110,7 @@ public:
     float y;
     float z;
 
+    uint32_t tex_index;
     float tex_x;
     float tex_y;
 
@@ -117,6 +118,7 @@ public:
       if (!initialized) {
         layout.begin()
           .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+          .add(bgfx::Attrib::Indices, 4, bgfx::AttribType::Uint8)
           .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
           .end();
         initialized = true;
@@ -139,10 +141,10 @@ public:
     // reduce the total # of vertices
     // to compress data
     Vertex vertices[] = {
-      {-1.0f, 1.0f, 1.0f, 0.0f, 0.0f},   {1.0f, 1.0f, 1.0f, 1.0f, 0.0f},
-      {-1.0f, -1.0f, 1.0f, 0.0f, 1.0f},  {1.0f, -1.0f, 1.0f, 1.0f, 1.0f},
-      {-1.0f, 1.0f, -1.0f, 0.0f, 0.0f},  {1.0f, 1.0f, -1.0f, 0.0f, 0.0f},
-      {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f}, {1.0f, -1.0f, -1.0f, 0.0f, 0.0f},
+      {-1.0f, 1.0f, 1.0f, 0, 0.0f, 0.0f},   {1.0f, 1.0f, 1.0f, 0, 1.0f, 0.0f},
+      {-1.0f, -1.0f, 1.0f, 0, 0.0f, 1.0f},  {1.0f, -1.0f, 1.0f, 0, 1.0f, 1.0f},
+      {-1.0f, 1.0f, -1.0f, 0, 0.0f, 0.0f},  {1.0f, 1.0f, -1.0f, 0, 0.0f, 0.0f},
+      {-1.0f, -1.0f, -1.0f, 0, 0.0f, 0.0f}, {1.0f, -1.0f, -1.0f, 0, 0.0f, 0.0f},
     };
 
     uint16_t indices[] = {
