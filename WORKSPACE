@@ -28,6 +28,6 @@ new_local_repository(
 # and build it from there, so it's not so brittle
 new_local_repository(
     name = "sdl2",
-    path = "/usr/local/Cellar/sdl2/2.0.14_1",
+    path = "/opt/homebrew/Cellar/sdl2/2.0.20",
     build_file = "@//external:BUILD.sdl2",
 )

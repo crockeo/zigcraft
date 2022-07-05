@@ -6,7 +6,7 @@ cc_library(
     hdrs = glob(["include/SDL2/*.h"]),
     includes = ["include"],
     linkopts = [
-        "-L/usr/local/Cellar/sdl2/2.0.14_1/lib/",
+        "-L/opt/homebrew/Cellar/sdl2/2.0.20/lib/",
 	"-lSDL2",
     ],
 )
