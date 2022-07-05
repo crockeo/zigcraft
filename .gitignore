@@ -8,3 +8,7 @@ compile_commands.json
 # like shaders or textures
 res/*.ktx
 shaders/*.bin
+
+# zig stuff for incremental zigification
+zig-cache/
+zig-out/
