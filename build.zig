@@ -11,6 +11,9 @@ pub fn build(b: *std.build.Builder) !void {
 
     exe.addIncludeDir("src");
 
+    exe.linkLibC();
+    exe.linkLibCpp();
+
     const bx = buildBx(b);
     exe.linkLibrary(bx);
 
@@ -48,13 +51,14 @@ fn buildCppCraft(b: *std.build.Builder, bgfx: *std.build.LibExeObjStep, bimg: *s
         &.{},
     );
 
-    cppcraft.addIncludeDir("dependencies/bgfx/include");
-    cppcraft.addIncludeDir("dependencies/bimg/include");
-    cppcraft.addIncludeDir("dependencies/bx/include");
-
     cppcraft.linkLibrary(bgfx);
+    cppcraft.addIncludeDir("dependencies/bgfx/include");
+
     cppcraft.linkLibrary(bimg);
+    cppcraft.addIncludeDir("dependencies/bimg/include");
+
     cppcraft.linkLibrary(bx);
+    cppcraft.addIncludeDir("dependencies/bx/include");
 
     return cppcraft;
 }
@@ -65,6 +69,11 @@ fn buildBgfx(b: *std.build.Builder, bimg: *std.build.LibExeObjStep, bx: *std.bui
     bgfx.defineCMacro("BGFX_CONFIG_RENDERER_VULKAN", "0");
     bgfx.defineCMacro("BGFX_CONFIG_RENDERER_METAL", "1");
     bgfx.defineCMacro("BGFX_CONFIG_DEBUG", "1");
+
+    // for some reason we get a memory sanitization error
+    // when we use tiny STL.
+    // so instead, just use libc++
+    bgfx.defineCMacro("BGFX_CONFIG_USE_TINYSTL", "0");
 
     bgfx.linkLibC();
     bgfx.linkLibCpp();
@@ -107,9 +116,9 @@ fn buildBgfx(b: *std.build.Builder, bimg: *std.build.LibExeObjStep, bx: *std.bui
             "dependencies/bgfx/src/topology.cpp",
             "dependencies/bgfx/src/vertexlayout.cpp",
         },
-        &.{}
-        // TODO: do i need this?
-        // "-fno-objc-arc",
+        &.{
+            "-fno-objc-arc",
+        }
     );
     bgfx.addIncludeDir("dependencies/bgfx/include");
 
