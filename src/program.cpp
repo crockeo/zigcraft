@@ -321,12 +321,6 @@ extern "C" {
 void realMain(SDL_Window *window, uint32_t width, uint32_t height) {
   Renderer renderer;
 
-  bgfx::reset(width, height, BGFX_RESET_VSYNC);
-  bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
-  bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x443355FF, 1.0f,
-                     0);
-  bgfx::touch(0);
-
   bool quit = false;
   SDL_Event current_event;
   auto begin = std::chrono::steady_clock::now();

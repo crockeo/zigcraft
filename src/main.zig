@@ -72,6 +72,23 @@ pub fn main() !void {
     }
     defer c.bgfx_shutdown();
 
+    c.bgfx_reset(WIDTH, HEIGHT, c.BGFX_RESET_VSYNC, c.BGFX_TEXTURE_FORMAT_COUNT);
+    c.bgfx_set_view_rect(
+        0,
+        0,
+        0,
+        @intCast(u16, WIDTH),
+        @intCast(u16, HEIGHT),
+    );
+    c.bgfx_set_view_clear(
+        0,
+        c.BGFX_CLEAR_COLOR | c.BGFX_CLEAR_DEPTH,
+        0x443355FF,
+        1.0,
+        0,
+    );
+    c.bgfx_touch(0);
+
     c.realMain(window, WIDTH, HEIGHT);
 }
 
