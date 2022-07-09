@@ -345,15 +345,6 @@ private:
 
 extern "C" {
 void realMain() {
-  Guard<int> sdl_init_guard(SDL_Init(SDL_INIT_VIDEO), [](int result) {
-    if (!result) {
-      SDL_Quit();
-    }
-  });
-  if (*sdl_init_guard) {
-    throw std::runtime_error("failed to init SDL");
-  }
-
   Guard<SDL_Window *> sdl_window_guard(
       SDL_CreateWindow("hello world", SDL_WINDOWPOS_UNDEFINED,
                        SDL_WINDOWPOS_UNDEFINED, WIDTH, HEIGHT,
