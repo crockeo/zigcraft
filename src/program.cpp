@@ -269,29 +269,6 @@ private:
 bool Cube::Vertex::initialized = false;
 bgfx::VertexLayout Cube::Vertex::layout;
 
-bgfx::PlatformData getPlatformData(SDL_Window *window) {
-  SDL_SysWMinfo wmi;
-  SDL_VERSION(&wmi.version);
-  if (!SDL_GetWindowWMInfo(window, &wmi)) {
-    throw std::runtime_error("failed to fetch window manager info");
-  }
-
-  bgfx::PlatformData pd;
-  // TODO: implement for
-  //   - linux / BSD (x11 and wayland?)
-  //   - windows
-#if BX_PLATFORM_OSX
-  pd.ndt = nullptr;
-  pd.nwh = wmi.info.cocoa.window;
-#endif
-
-  pd.context = nullptr;
-  pd.backBuffer = nullptr;
-  pd.backBufferDS = nullptr;
-
-  return pd;
-}
-
 class Renderer {
 public:
   Renderer()
@@ -342,10 +319,6 @@ private:
 
 extern "C" {
 void realMain(SDL_Window *window, uint32_t width, uint32_t height) {
-  auto pd = getPlatformData(window);
-  bgfx::setPlatformData(pd);
-  bgfx::renderFrame();
-
   Guard<bool> bgfx_guard(bgfx::init(), [](bool success) {
     if (success) {
       bgfx::shutdown();

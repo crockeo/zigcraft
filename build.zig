@@ -16,12 +16,15 @@ pub fn build(b: *std.build.Builder) !void {
 
     const bx = buildBx(b);
     exe.linkLibrary(bx);
+    exe.addIncludeDir("dependencies/bx/include");
 
     const bimg = buildBimg(b, bx);
     exe.linkLibrary(bimg);
+    exe.addIncludeDir("dependencies/bimg/include");
 
     const bgfx = buildBgfx(b, bimg, bx);
     exe.linkLibrary(bgfx);
+    exe.addIncludeDir("dependencies/bgfx/include");
 
     const cppcraft = try buildCppCraft(b, bgfx, bimg, bx);
     exe.linkLibrary(cppcraft);
