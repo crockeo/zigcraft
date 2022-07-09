@@ -2,8 +2,10 @@ cc_binary(
     name = "cppcraft",
     visibility = ["//visibility:public"],
     srcs = [
-        "main.cpp",
         "guard.hpp",
+        "main.cpp",
+        "program.cpp",
+        "program.h",
     ],
     data = [
         "//shaders",

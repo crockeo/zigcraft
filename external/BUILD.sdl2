@@ -4,7 +4,7 @@ cc_library(
     name = "sdl2",
     visibility = ["//visibility:public"],
     hdrs = glob(["include/SDL2/*.h"]),
-    includes = ["include"],
+    includes = ["include/SDL2"],
     linkopts = [
         "-L/opt/homebrew/Cellar/sdl2/2.0.20/lib/",
 	"-lSDL2",
