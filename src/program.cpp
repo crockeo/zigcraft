@@ -328,8 +328,6 @@ void realMain(SDL_Window *window, uint32_t width, uint32_t height) {
     throw std::runtime_error("failed to init BGFX");
   }
 
-  std::cout << "SENTINEL " << width << " " << height << std::endl;
-
   Renderer renderer;
 
   bgfx::reset(width, height, BGFX_RESET_VSYNC);
