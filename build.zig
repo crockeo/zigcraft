@@ -66,6 +66,10 @@ fn buildBgfx(b: *std.build.Builder, bimg: *std.build.LibExeObjStep, bx: *std.bui
     bgfx.defineCMacro("BGFX_CONFIG_RENDERER_METAL", "1");
     bgfx.defineCMacro("BGFX_CONFIG_DEBUG", "1");
 
+    bgfx.linkFramework("Cocoa");
+    bgfx.linkFramework("Metal");
+    bgfx.linkFramework("QuartzCore");
+
     bgfx.linkLibrary(bimg);
     bgfx.addIncludeDir("dependencies/bimg/include");
 
@@ -77,9 +81,11 @@ fn buildBgfx(b: *std.build.Builder, bimg: *std.build.LibExeObjStep, bx: *std.bui
             "dependencies/bgfx/src/bgfx.cpp",
             "dependencies/bgfx/src/debug_renderdoc.cpp",
             "dependencies/bgfx/src/dxgi.cpp",
+            "dependencies/bgfx/src/glcontext_eagl.mm",
             "dependencies/bgfx/src/glcontext_egl.cpp",
             "dependencies/bgfx/src/glcontext_glx.cpp",
             "dependencies/bgfx/src/glcontext_html5.cpp",
+            "dependencies/bgfx/src/glcontext_nsgl.mm",
             "dependencies/bgfx/src/glcontext_wgl.cpp",
             "dependencies/bgfx/src/nvapi.cpp",
             "dependencies/bgfx/src/renderer_d3d11.cpp",
@@ -87,6 +93,7 @@ fn buildBgfx(b: *std.build.Builder, bimg: *std.build.LibExeObjStep, bx: *std.bui
             "dependencies/bgfx/src/renderer_d3d9.cpp",
             "dependencies/bgfx/src/renderer_gl.cpp",
             "dependencies/bgfx/src/renderer_gnm.cpp",
+            "dependencies/bgfx/src/renderer_mtl.mm",
             "dependencies/bgfx/src/renderer_noop.cpp",
             "dependencies/bgfx/src/renderer_nvn.cpp",
             "dependencies/bgfx/src/renderer_vk.cpp",
@@ -99,42 +106,12 @@ fn buildBgfx(b: *std.build.Builder, bimg: *std.build.LibExeObjStep, bx: *std.bui
             "dependencies/bgfx/src/vertexlayout.cpp",
         },
         &.{}
+        // TODO: do i need this?
+        // "-fno-objc-arc",
     );
     bgfx.addIncludeDir("dependencies/bgfx/include");
-    //     includes = [
-    //         "3rdparty",
-    //         "3rdparty/khronos",
-    //         "include",
-    //     ],
 
     return bgfx;
-
-    // TODO: do i need to do anything with macos target?
-    // objc_library(
-    //     name = "bgfx_macos",
-    //     visibility = ["//visibility:public"],
-    //     srcs = [
-    //         "src/glcontext_eagl.mm",
-    //         "src/glcontext_nsgl.mm",
-    //         "src/renderer_mtl.mm",
-    //     ],
-    //     hdrs = glob([
-    //         "**/*.h",
-    //         "**/*.inl",
-    //     ]),
-    //     includes = [
-    //         "include",
-    //     ],
-    //     sdk_frameworks = [
-    //         "Cocoa",
-    //         "Metal",
-    //         "QuartzCore",
-    //     ],
-    //     copts = [
-    //         "-fno-objc-arc",
-    //     ],
-    //     deps = [":bgfx"],
-    // )
 }
 
 fn buildBimg(b: *std.build.Builder, bx: *std.build.LibExeObjStep) *std.build.LibExeObjStep {
@@ -173,6 +150,7 @@ fn buildBimg(b: *std.build.Builder, bx: *std.build.LibExeObjStep) *std.build.Lib
     );
     bimg.addIncludeDir("dependencies/bimg/include");
     bimg.addIncludeDir("dependencies/bimg/3rdparty");
+    bimg.addIncludeDir("dependencies/bimg/3rdparty/astc-codec/include");
     bimg.addIncludeDir("dependencies/bimg/3rdparty/iqa/include");
 
     return bimg;
