@@ -20,9 +20,6 @@
 
 using namespace cppcraft;
 
-int WIDTH = 640;
-int HEIGHT = 480;
-
 // returns a ptr to the underlying data
 // because we expect to load large binary files
 // (e.g. models and textures)
@@ -305,18 +302,18 @@ public:
         _dirt_cube("res/dirt.ktx", "res/dirt.ktx", "res/dirt.ktx", 2.0f, 2.0f,
                    2.0f) {}
 
-  void render(std::chrono::time_point<std::chrono::steady_clock> start) {
+  void render(std::chrono::time_point<std::chrono::steady_clock> start, uint32_t width, uint32_t height) {
     const bx::Vec3 at = {0.0f, 0.0f, 0.0f};
     const bx::Vec3 eye = {0.0f, 0.0f, 10.0f};
     float view[16];
     bx::mtxLookAt(view, eye, at);
 
     float proj[16];
-    bx::mtxProj(proj, 60.0f, float(WIDTH) / float(HEIGHT), 0.1f, 100.0f,
+    bx::mtxProj(proj, 60.0f, float(width) / float(height), 0.1f, 100.0f,
                 bgfx::getCaps()->homogeneousDepth);
     bgfx::setViewTransform(0, view, proj);
 
-    bgfx::setViewRect(0, 0, 0, WIDTH, HEIGHT);
+    bgfx::setViewRect(0, 0, 0, width, height);
     bgfx::touch(0);
 
     auto now = std::chrono::steady_clock::now();
@@ -344,21 +341,8 @@ private:
 };
 
 extern "C" {
-void realMain() {
-  Guard<SDL_Window *> sdl_window_guard(
-      SDL_CreateWindow("hello world", SDL_WINDOWPOS_UNDEFINED,
-                       SDL_WINDOWPOS_UNDEFINED, WIDTH, HEIGHT,
-                       SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN),
-      [](SDL_Window *window) {
-        if (window != nullptr) {
-          SDL_DestroyWindow(window);
-        }
-      });
-  if (*sdl_window_guard == nullptr) {
-    throw std::runtime_error("failed to create SDL window");
-  }
-
-  auto pd = getPlatformData(*sdl_window_guard);
+void realMain(SDL_Window *window, uint32_t width, uint32_t height) {
+  auto pd = getPlatformData(window);
   bgfx::setPlatformData(pd);
   bgfx::renderFrame();
 
@@ -371,10 +355,12 @@ void realMain() {
     throw std::runtime_error("failed to init BGFX");
   }
 
+  std::cout << "SENTINEL " << width << " " << height << std::endl;
+
   Renderer renderer;
 
-  bgfx::reset(WIDTH, HEIGHT, BGFX_RESET_VSYNC);
-  bgfx::setViewRect(0, 0, 0, uint16_t(WIDTH), uint16_t(HEIGHT));
+  bgfx::reset(width, height, BGFX_RESET_VSYNC);
+  bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
   bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x443355FF, 1.0f,
                      0);
   bgfx::touch(0);
@@ -393,14 +379,14 @@ void realMain() {
       if (current_event.type == SDL_WINDOWEVENT) {
         auto window_event = current_event.window;
         if (window_event.event == SDL_WINDOWEVENT_RESIZED) {
-          WIDTH = window_event.data1;
-          HEIGHT = window_event.data2;
-          bgfx::reset(WIDTH, HEIGHT, BGFX_RESET_VSYNC);
-          bgfx::setViewRect(0, 0, 0, uint16_t(WIDTH), uint16_t(HEIGHT));
+          width = window_event.data1;
+          height = window_event.data2;
+          bgfx::reset(width, height, BGFX_RESET_VSYNC);
+          bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
         }
       }
     }
-    renderer.render(begin);
+    renderer.render(begin, width, height);
 
     auto end = std::chrono::steady_clock::now();
     auto time_spent =
