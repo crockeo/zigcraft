@@ -1,11 +1,48 @@
 const std = @import("std");
 
-pub const c = @cImport({
+const c = @cImport({
     @cInclude("bgfx/c99/bgfx.h");
     @cInclude("program.h");
     @cInclude("SDL.h");
     @cInclude("SDL_syswm.h");
 });
+
+const WIDTH: u32 = 640;
+const HEIGHT: u32 = 480;
+
+const INIT: c.bgfx_init_t = .{
+    .type = c.BGFX_RENDERER_TYPE_COUNT,
+    .vendorId = c.BGFX_PCI_ID_NONE,
+    .deviceId = 0,
+    .capabilities = std.math.maxInt(u64),
+    .debug = true,
+    .profile = false,
+    .platformData = .{
+        .ndt = null,
+        .nwh = null,
+        .context = null,
+        .backBuffer = null,
+        .backBufferDS = null,
+    },
+    .resolution = .{
+        .format = c.BGFX_TEXTURE_FORMAT_COUNT,
+        .width = WIDTH,
+        .height = HEIGHT,
+        .reset = c.BGFX_RESET_VSYNC,
+        .numBackBuffers = 0,
+        .maxFrameLatency = 0,
+    },
+    .limits = .{
+        .maxEncoders = std.math.maxInt(u16),
+        .minResourceCbSize = 0,
+        .transientVbSize = std.math.maxInt(u32),
+        .transientIbSize = std.math.maxInt(u32),
+    },
+    // ./src/main.zig:10:30: error: missing field: 'resolution'
+    // const INIT: c.bgfx_init_t = .{
+    .callback = null,
+    .allocator = null,
+};
 
 pub fn main() !void {
     if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
@@ -14,8 +51,6 @@ pub fn main() !void {
     }
     defer c.SDL_Quit();
 
-    const WIDTH: u32 = 640;
-    const HEIGHT: u32 = 480;
     const window = c.SDL_CreateWindow(
         "hello world",
         c.SDL_WINDOWPOS_UNDEFINED,
@@ -30,6 +65,12 @@ pub fn main() !void {
     defer c.SDL_DestroyWindow(window);
 
     try registerPlatformData(window);
+
+    if (!c.bgfx_init(&INIT)) {
+        std.log.err("Failed to initialize BGFX.", .{});
+        return error.FailedBGFXInit;
+    }
+    defer c.bgfx_shutdown();
 
     c.realMain(window, WIDTH, HEIGHT);
 }

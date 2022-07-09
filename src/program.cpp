@@ -319,15 +319,6 @@ private:
 
 extern "C" {
 void realMain(SDL_Window *window, uint32_t width, uint32_t height) {
-  Guard<bool> bgfx_guard(bgfx::init(), [](bool success) {
-    if (success) {
-      bgfx::shutdown();
-    }
-  });
-  if (!*bgfx_guard) {
-    throw std::runtime_error("failed to init BGFX");
-  }
-
   Renderer renderer;
 
   bgfx::reset(width, height, BGFX_RESET_VSYNC);
