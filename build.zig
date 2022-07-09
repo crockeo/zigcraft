@@ -66,6 +66,8 @@ fn buildBgfx(b: *std.build.Builder, bimg: *std.build.LibExeObjStep, bx: *std.bui
     bgfx.defineCMacro("BGFX_CONFIG_RENDERER_METAL", "1");
     bgfx.defineCMacro("BGFX_CONFIG_DEBUG", "1");
 
+    bgfx.linkLibC();
+    bgfx.linkLibCpp();
     bgfx.linkFramework("Cocoa");
     bgfx.linkFramework("Metal");
     bgfx.linkFramework("QuartzCore");
@@ -115,35 +117,16 @@ fn buildBgfx(b: *std.build.Builder, bimg: *std.build.LibExeObjStep, bx: *std.bui
 }
 
 fn buildBimg(b: *std.build.Builder, bx: *std.build.LibExeObjStep) *std.build.LibExeObjStep {
-    const astc_codec = b.addStaticLibrary("astc-codec", null);
-    astc_codec.linkLibC();
-    astc_codec.linkLibCpp();
-    astc_codec.addCSourceFiles(
-        &.{
-            "dependencies/bimg/3rdparty/astc-codec/src/decoder/codec.cc",
-            "dependencies/bimg/3rdparty/astc-codec/src/decoder/tools/astc_inspector_cli.cc",
-            "dependencies/bimg/3rdparty/astc-codec/src/decoder/weight_infill.cc",
-            "dependencies/bimg/3rdparty/astc-codec/src/decoder/endpoint_codec.cc",
-            "dependencies/bimg/3rdparty/astc-codec/src/decoder/astc_file.cc",
-            "dependencies/bimg/3rdparty/astc-codec/src/decoder/quantization.cc",
-            "dependencies/bimg/3rdparty/astc-codec/src/decoder/physical_astc_block.cc",
-            "dependencies/bimg/3rdparty/astc-codec/src/decoder/intermediate_astc_block.cc",
-            "dependencies/bimg/3rdparty/astc-codec/src/decoder/logical_astc_block.cc",
-            "dependencies/bimg/3rdparty/astc-codec/src/decoder/footprint.cc",
-            "dependencies/bimg/3rdparty/astc-codec/src/decoder/partition.cc",
-            "dependencies/bimg/3rdparty/astc-codec/src/decoder/integer_sequence_codec.cc",
-        },
-        &.{},
-    );
-    astc_codec.addIncludeDir("dependencies/bimg/3rdparty/astc-codec");
-
     const bimg = b.addStaticLibrary("bimg", null);
+
+    // can turn on ASTC decoding if i choose to use ASTC textures
+    bimg.defineCMacro("BIMG_DECODE_ASTC", "0");
+
+    bimg.linkLibC();
+    bimg.linkLibCpp();
 
     bimg.linkLibrary(bx);
     bimg.addIncludeDir("dependencies/bx/include");
-
-    bimg.linkLibrary(astc_codec);
-    bimg.addIncludeDir("dependencies/bimg/3rdparty/astc-codec/include");
 
     bimg.addCSourceFiles(
         &.{
@@ -157,6 +140,7 @@ fn buildBimg(b: *std.build.Builder, bx: *std.build.LibExeObjStep) *std.build.Lib
     );
     bimg.addIncludeDir("dependencies/bimg/include");
     bimg.addIncludeDir("dependencies/bimg/3rdparty");
+    bimg.addIncludeDir("dependencies/bimg/3rdparty/astc-codec/include");
     bimg.addIncludeDir("dependencies/bimg/3rdparty/iqa/include");
 
     return bimg;
