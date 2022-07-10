@@ -120,20 +120,6 @@ pub fn main() !void {
         const dt = timer.lap();
         const dtf = @intToFloat(f32, dt) / @intToFloat(f32, std.time.ns_per_s);
 
-        if (event_handler.input.isPressed(c.SDL_SCANCODE_W)) {
-            pos.z -= dtf * 5;
-        }
-        if (event_handler.input.isPressed(c.SDL_SCANCODE_S)) {
-            pos.z += dtf * 5;
-        }
-
-        if (event_handler.input.isPressed(c.SDL_SCANCODE_A)) {
-            pos.x += dtf * 5;
-        }
-        if (event_handler.input.isPressed(c.SDL_SCANCODE_D)) {
-            pos.x -= dtf * 5;
-        }
-
         // Note that rotX and rotY
         // come from mouseRot.dy and mouseRot.dx
         // because of 2D movement vs. rotational axes.
@@ -147,6 +133,26 @@ pub fn main() !void {
             zlm.Vec3.unitY,
             rotY,
         ));
+
+        const forward4 = zlm.Vec4.new(0, 0, -1, 0).transform(rot);
+        const forward = zlm.vec3(forward4.x, forward4.y, forward4.z);
+
+        const left4 = zlm.Vec4.unitX.transform(rot);
+        const left = zlm.vec3(left4.x, left4.y, left4.z);
+
+        if (event_handler.input.isPressed(c.SDL_SCANCODE_W)) {
+            pos = pos.add(forward.scale(dtf * 5));
+        }
+        if (event_handler.input.isPressed(c.SDL_SCANCODE_S)) {
+            pos = pos.add(forward.scale(-dtf * 5));
+        }
+
+        if (event_handler.input.isPressed(c.SDL_SCANCODE_A)) {
+            pos = pos.add(left.scale(dtf * 5));
+        }
+        if (event_handler.input.isPressed(c.SDL_SCANCODE_D)) {
+            pos = pos.add(left.scale(-dtf * 5));
+        }
 
         while (event_handler.handleEvent()) {}
         renderer.render(
