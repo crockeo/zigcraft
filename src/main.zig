@@ -2,6 +2,7 @@ const std = @import("std");
 
 const c = @import("./bridge.zig").c;
 const shader = @import("./shader.zig");
+const texture = @import("./texture.zig");
 
 const WIDTH: u32 = 640;
 const HEIGHT: u32 = 480;
@@ -93,6 +94,13 @@ pub fn main() !void {
         "shaders/fragment.bin",
     );
     defer shader_program.deinit();
+
+    const cobblestone = try texture.Texture.initFromFile(
+        gpa.allocator(),
+        0,
+        "res/cobblestone.ktx",
+    );
+    defer cobblestone.deinit();
 
     c.realMain(
         window,
