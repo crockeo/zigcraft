@@ -28,9 +28,6 @@ pub fn build(b: *std.build.Builder) !void {
     exe.linkLibrary(bgfx);
     exe.addIncludeDir("dependencies/bgfx/include");
 
-    const cppcraft = try buildCppCraft(b, bgfx, bimg, bx);
-    exe.linkLibrary(cppcraft);
-
     try buildSdl2(b, exe);
 
     const run_cmd = exe.run();
@@ -41,31 +38,6 @@ pub fn build(b: *std.build.Builder) !void {
 
     const run_step = b.step("run", "");
     run_step.dependOn(&run_cmd.step);
-}
-
-fn buildCppCraft(b: *std.build.Builder, bgfx: *std.build.LibExeObjStep, bimg: *std.build.LibExeObjStep, bx: *std.build.LibExeObjStep) !*std.build.LibExeObjStep {
-    const cppcraft = b.addStaticLibrary("cppcraft", null);
-
-    cppcraft.linkLibCpp();
-    try buildSdl2(b, cppcraft);
-
-    cppcraft.addCSourceFiles(
-        &.{
-            "src/program.cpp",
-        },
-        &.{},
-    );
-
-    cppcraft.linkLibrary(bgfx);
-    cppcraft.addIncludeDir("dependencies/bgfx/include");
-
-    cppcraft.linkLibrary(bimg);
-    cppcraft.addIncludeDir("dependencies/bimg/include");
-
-    cppcraft.linkLibrary(bx);
-    cppcraft.addIncludeDir("dependencies/bx/include");
-
-    return cppcraft;
 }
 
 fn buildBgfx(b: *std.build.Builder, bimg: *std.build.LibExeObjStep, bx: *std.build.LibExeObjStep) *std.build.LibExeObjStep {
