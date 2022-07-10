@@ -3,6 +3,7 @@ const zlm = @import("zlm");
 
 const c = @import("./bridge.zig").c;
 const cube = @import("./cube.zig");
+const EventHandler = @import("./events.zig").EventHandler;
 const shader = @import("./shader.zig");
 const texture = @import("./texture.zig");
 
@@ -45,14 +46,12 @@ pub fn main() !void {
     }
     defer c.SDL_Quit();
 
-    var width: u32 = INIT.resolution.width;
-    var height: u32 = INIT.resolution.height;
     const window = c.SDL_CreateWindow(
         "hello world",
         c.SDL_WINDOWPOS_UNDEFINED,
         c.SDL_WINDOWPOS_UNDEFINED,
-        @intCast(c_int, width),
-        @intCast(c_int, height),
+        @intCast(c_int, INIT.resolution.width),
+        @intCast(c_int, INIT.resolution.height),
         c.SDL_WINDOW_RESIZABLE | c.SDL_WINDOW_SHOWN,
     ) orelse {
         std.log.err("Failed to initialize SDL window.", .{});
@@ -68,13 +67,13 @@ pub fn main() !void {
     }
     defer c.bgfx_shutdown();
 
-    c.bgfx_reset(width, height, c.BGFX_RESET_VSYNC, c.BGFX_TEXTURE_FORMAT_COUNT);
+    c.bgfx_reset(INIT.resolution.width, INIT.resolution.height, c.BGFX_RESET_VSYNC, c.BGFX_TEXTURE_FORMAT_COUNT);
     c.bgfx_set_view_rect(
         0,
         0,
         0,
-        @intCast(u16, width),
-        @intCast(u16, height),
+        @intCast(u16, INIT.resolution.width),
+        @intCast(u16, INIT.resolution.height),
     );
     c.bgfx_set_view_clear(
         0,
@@ -96,36 +95,14 @@ pub fn main() !void {
     );
     defer shader_program.deinit();
 
-    const cobblestone = try texture.Texture.initFromFile(
-        gpa.allocator(),
-        0,
-        "res/cobblestone.ktx",
-    );
-    defer cobblestone.deinit();
-
-    var quit: bool = false;
-    var current_event: c.SDL_Event = undefined;
-
     const beginning = std.time.nanoTimestamp();
+    var event_handler: EventHandler = EventHandler.init(INIT.resolution.width, INIT.resolution.height);
     var timer = try std.time.Timer.start();
-    while (!quit) {
+    while (!event_handler.should_quit) {
         timer.reset();
 
-        while (c.SDL_PollEvent(&current_event) != 0) {
-            if (current_event.type == c.SDL_QUIT) {
-                quit = true;
-            }
-
-            if (current_event.type == c.SDL_WINDOWEVENT) {
-                const window_event = current_event.window;
-                if (window_event.event == c.SDL_WINDOWEVENT_RESIZED) {
-                    width = @intCast(u32, window_event.data1);
-                    height = @intCast(u32, window_event.data2);
-                    c.bgfx_reset(width, height, c.BGFX_RESET_VSYNC, c.BGFX_TEXTURE_FORMAT_COUNT);
-                }
-            }
-        }
-        renderer.render(beginning, width, height);
+        while (event_handler.handleEvent()) {}
+        renderer.render(beginning, event_handler.window_width, event_handler.window_height);
 
         const time_spent = timer.lap();
         if (time_spent < 16 * std.time.ns_per_ms) {
