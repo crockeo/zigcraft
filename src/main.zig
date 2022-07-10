@@ -99,6 +99,10 @@ pub fn main() !void {
     var event_handler: EventHandler = EventHandler.init(INIT.resolution.width, INIT.resolution.height);
     var timer = try std.time.Timer.start();
     var pos = zlm.Vec3.new(0, 0, 0);
+
+    var rotX: f32 = 0.0;
+    var rotY: f32 = 0.0;
+
     while (!event_handler.should_quit) {
         const dt = timer.lap();
         const dtf = @intToFloat(f32, dt) / @intToFloat(f32, std.time.ns_per_s);
@@ -117,12 +121,27 @@ pub fn main() !void {
             pos.x -= dtf * 5;
         }
 
+        // Note that rotX and rotY
+        // come from mouseRot.dy and mouseRot.dx
+        // because of 2D movement vs. rotational axes.
+        const mouseRot = event_handler.input.getMouseRot();
+        rotY -= mouseRot.x * std.math.pi;
+        rotX += mouseRot.y * std.math.pi;
+        const rot = zlm.Mat4.createAngleAxis(
+            zlm.Vec3.unitX,
+            rotX,
+        ).mul(zlm.Mat4.createAngleAxis(
+            zlm.Vec3.unitY,
+            rotY,
+        ));
+
         while (event_handler.handleEvent()) {}
         renderer.render(
             beginning,
             event_handler.window_width,
             event_handler.window_height,
             pos,
+            rot,
         );
 
         if (dt < 16 * std.time.ns_per_ms) {
@@ -201,9 +220,14 @@ const Renderer = struct {
         width: u32,
         height: u32,
         pos: zlm.Vec3,
+        rot: zlm.Mat4,
     ) void {
+        const lookAt4 = zlm.Vec4.unitZ.transform(rot);
+        const lookAt = pos.add(zlm.Vec3.new(lookAt4.x, lookAt4.y, lookAt4.z));
+
+
         const view = zlm.Mat4.createLookAt(
-            pos.add(zlm.Vec3.new(0, 0, 1)),
+            lookAt,
             pos,
             zlm.Vec3.unitY,
         );

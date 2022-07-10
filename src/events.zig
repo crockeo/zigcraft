@@ -1,4 +1,5 @@
 const std = @import("std");
+const zlm = @import("zlm");
 
 const c = @import("./bridge.zig").c;
 
@@ -27,6 +28,8 @@ pub const EventHandler = struct {
 
         if (self.event.type == c.SDL_KEYDOWN or self.event.type == c.SDL_KEYUP) {
             self.handleKeyboardEvent(self.event.key);
+        } else if (self.event.type == c.SDL_MOUSEMOTION) {
+            self.handleMouseMotion(self.event.motion);
         } else if (self.event.type == c.SDL_QUIT) {
             self.should_quit = true;
         } else if (self.event.type == c.SDL_WINDOWEVENT) {
@@ -38,6 +41,15 @@ pub const EventHandler = struct {
 
     fn handleKeyboardEvent(self: *EventHandler, event: c.SDL_KeyboardEvent) void {
         self.input.setPressed(event.keysym.scancode, event.state == c.SDL_PRESSED);
+    }
+
+    fn handleMouseMotion(self: *EventHandler, event: c.SDL_MouseMotionEvent) void {
+        self.input.moveMouse(
+            self.window_width,
+            self.window_height,
+            event.xrel,
+            event.yrel,
+        );
     }
 
     fn handleWindowEvent(self: *EventHandler, event: c.SDL_WindowEvent) void {
@@ -56,11 +68,34 @@ pub const EventHandler = struct {
 
 pub const InputState = struct {
     state: [512]bool,
+    mouse_dx: f32,
+    mouse_dy: f32,
 
     pub fn init() InputState {
         return InputState{
             .state = std.mem.zeroes([512]bool),
+            .mouse_dx = 0.0,
+            .mouse_dy = 0.0,
         };
+    }
+
+    pub fn moveMouse(
+        self: *InputState,
+        window_width: u32,
+        window_height: u32,
+        xrel: i32,
+        yrel: i32,
+    ) void {
+        self.mouse_dx = @intToFloat(f32, xrel) / @intToFloat(f32, window_width);
+        self.mouse_dy = @intToFloat(f32, yrel) / @intToFloat(f32, window_height);
+    }
+
+    pub fn getMouseRot(self: *InputState) zlm.Vec2 {
+        const mouse_dx = self.mouse_dx;
+        const mouse_dy = self.mouse_dy;
+        self.mouse_dx = 0.0;
+        self.mouse_dy = 0.0;
+        return zlm.Vec2.new(mouse_dx, mouse_dy);
     }
 
     // TODO: optimize by turning this into a bitmask (if it doesn't compiler optimize already)
