@@ -116,16 +116,14 @@ pub fn main() !void {
                 quit = true;
             }
 
-            // TODO: handle window resizing
-            // if (current_event.type == SDL_WINDOWEVENT) {
-            //     auto window_event = current_event.window;
-            //     if (window_event.event == SDL_WINDOWEVENT_RESIZED) {
-            //         width = window_event.data1;
-            //         height = window_event.data2;
-            //         bgfx::reset(width, height, BGFX_RESET_VSYNC);
-            //         bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
-            //     }
-            // }
+            if (current_event.type == c.SDL_WINDOWEVENT) {
+                const window_event = current_event.window;
+                if (window_event.event == c.SDL_WINDOWEVENT_RESIZED) {
+                    width = @intCast(u32, window_event.data1);
+                    height = @intCast(u32, window_event.data2);
+                    c.bgfx_reset(width, height, c.BGFX_RESET_VSYNC, c.BGFX_TEXTURE_FORMAT_COUNT);
+                }
+            }
         }
         renderer.render(beginning, width, height);
 
