@@ -12,3 +12,5 @@ shaders/*.bin
 # zig stuff for incremental zigification
 zig-cache/
 zig-out/
+.zigmod
+deps.zig
