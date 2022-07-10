@@ -126,6 +126,13 @@ pub fn main() !void {
         const mouseRot = event_handler.input.getMouseRot();
         rotY -= mouseRot.x * std.math.pi;
         rotX += mouseRot.y * std.math.pi;
+        if (rotX < -std.math.pi / 3.0) {
+            rotX = -std.math.pi / 3.0;
+        }
+        if (rotX > std.math.pi / 3.0) {
+            rotX = std.math.pi / 3.0;
+        }
+
         const rot = zlm.Mat4.createAngleAxis(
             zlm.Vec3.unitX,
             rotX,
