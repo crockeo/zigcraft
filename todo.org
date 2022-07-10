@@ -1,7 +1,0 @@
-* TODOs
-** Build shadercRelease with bazel
-** Build shader.bins with shadercRelease target with bazel (genrule some stuff)
-** build texturec with bazel
-** build compiled textures with texturec under bazel
-** write function that generates vertex / index / texture coord data for a block
-*** need to render different textures on all of top, bottom, sides
