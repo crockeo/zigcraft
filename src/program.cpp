@@ -1,3 +1,5 @@
+#include "program.h"
+
 #include <chrono>
 #include <fstream>
 #include <iostream>
@@ -12,6 +14,7 @@
 #include "SDL.h"
 #include "SDL_syswm.h"
 #include "bgfx/bgfx.h"
+#include "bgfx/c99/bgfx.h"
 #include "bgfx/platform.h"
 #include "bx/math.h"
 #include "bx/thread.h"
@@ -51,17 +54,6 @@ const bgfx::Memory *loadBinaryFileMem(std::string file_path) {
       bgfx::makeRef(&(**shared_contents)[0], (*shared_contents)->size(),
                     &loadBinaryFileMem_Release, shared_contents);
   return handle;
-}
-
-bgfx::ShaderHandle loadShader(std::string file_path) {
-  return bgfx::createShader(loadBinaryFileMem(file_path));
-}
-
-bgfx::ProgramHandle loadProgram(std::string vertex_file_path,
-                                std::string fragment_file_path) {
-  auto vertex_shader = loadShader(vertex_file_path);
-  auto fragment_shader = loadShader(fragment_file_path);
-  return bgfx::createProgram(vertex_shader, fragment_shader, true);
 }
 
 bgfx::TextureHandle loadTexture(std::string file_path) {
@@ -132,9 +124,10 @@ public:
   };
 
   Cube(std::string top_file_path, std::string side_file_path,
-       std::string bottom_file_path, float width, float height, float depth)
+       std::string bottom_file_path, float width, float height, float depth,
+       bgfx::ProgramHandle program)
       : _top_texture(0, top_file_path), _side_texture(1, side_file_path),
-        _bottom_texture(2, bottom_file_path) {
+        _bottom_texture(2, bottom_file_path), _program(program) {
     width /= 2;
     height /= 2;
     depth /= 2;
@@ -230,7 +223,6 @@ public:
     };
 
     Vertex::init();
-    _program = loadProgram("shaders/vertex.bin", "shaders/fragment.bin");
     _vertices = bgfx::createVertexBuffer(bgfx::copy(vertices, sizeof(vertices)),
                                          Vertex::layout);
     _indices = bgfx::createIndexBuffer(bgfx::copy(indices, sizeof(indices)));
@@ -271,13 +263,13 @@ bgfx::VertexLayout Cube::Vertex::layout;
 
 class Renderer {
 public:
-  Renderer()
+  Renderer(bgfx::ProgramHandle program)
       : _grass_cube("res/grass_top.ktx", "res/grass_side.ktx", "res/dirt.ktx",
-                    2.0f, 2.0f, 2.0f),
+                    2.0f, 2.0f, 2.0f, program),
         _cobblestone_cube("res/cobblestone.ktx", "res/cobblestone.ktx",
-                          "res/cobblestone.ktx", 2.0f, 2.0f, 2.0f),
+                          "res/cobblestone.ktx", 2.0f, 2.0f, 2.0f, program),
         _dirt_cube("res/dirt.ktx", "res/dirt.ktx", "res/dirt.ktx", 2.0f, 2.0f,
-                   2.0f) {}
+                   2.0f, program) {}
 
   void render(std::chrono::time_point<std::chrono::steady_clock> start, uint32_t width, uint32_t height) {
     const bx::Vec3 at = {0.0f, 0.0f, 0.0f};
@@ -318,8 +310,11 @@ private:
 };
 
 extern "C" {
-void realMain(SDL_Window *window, uint32_t width, uint32_t height) {
-  Renderer renderer;
+void realMain(SDL_Window *window, bgfx_program_handle_t shader_program, uint32_t width, uint32_t height) {
+  bgfx::ProgramHandle handle;
+  handle.idx = shader_program.idx;
+
+  Renderer renderer(handle);
 
   bool quit = false;
   SDL_Event current_event;

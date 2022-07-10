@@ -94,7 +94,12 @@ pub fn main() !void {
     );
     defer shader_program.deinit();
 
-    c.realMain(window, WIDTH, HEIGHT);
+    c.realMain(
+        window,
+        shader_program.handle,
+        WIDTH,
+        HEIGHT,
+    );
 }
 
 fn registerPlatformData(window: *c.SDL_Window) !void {
