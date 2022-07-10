@@ -106,6 +106,7 @@ pub fn main() !void {
     var quit: bool = false;
     var current_event: c.SDL_Event = undefined;
 
+    const beginning = std.time.nanoTimestamp();
     var timer = try std.time.Timer.start();
     while (!quit) {
         timer.reset();
@@ -126,7 +127,7 @@ pub fn main() !void {
             //     }
             // }
         }
-        renderer.render(width, height);
+        renderer.render(beginning, width, height);
 
         const time_spent = timer.lap();
         if (time_spent < 16 * std.time.ns_per_ms) {
@@ -199,7 +200,7 @@ const Renderer = struct {
         self.dirt.deinit();
     }
 
-    pub fn render(self: *const Renderer, width: u32, height: u32) void {
+    pub fn render(self: *const Renderer, beginning: i128, width: u32, height: u32) void {
         const view = zlm.Mat4.createLookAt(
             zlm.Vec3.new(0, 0, 5),
             zlm.Vec3.zero,
@@ -221,36 +222,22 @@ const Renderer = struct {
             &self.cobblestone,
             &self.dirt,
         };
+        const now = std.time.nanoTimestamp();
+        const time_passed = @intToFloat(f32, now - beginning) / @intToFloat(f32, std.time.ns_per_s);
         var i: usize = 0;
         while (i < cubes.len) {
-            // TODO: make the cubes rotate
-            // for reference...
-            //
-            // getting the time:
-            //
-            //   auto now = std::chrono::steady_clock::now();
-            //   float time_sec =
-            //       std::chrono::duration_cast<std::chrono::milliseconds>(now - start)
-            //           .count() /
-            //       1000.f;
-            //
-            // and then using it:
-            //
-            //   float mtx[16];
-            //   bx::mtxRotateXY(mtx, time_sec * 0.7 + i, time_sec + i);
-            //   mtx[12] = ((float)i - 1) * 3.0f;
-            //   mtx[13] = 0.0f;
-            //   mtx[14] = 0.0f;
-            var mtx = [16]f32{
-                1.0, 0.0, 0.0, 0.0,
-                0.0, 1.0, 0.0, 0.0,
-                0.0, 0.0, 1.0, 0.0,
-                0.0, 0.0, 0.0, 1.0,
-            };
-            mtx[12] = (@intToFloat(f32, i) - 1) * 3.0;
-            mtx[13] = 0;
-            mtx[14] = 0;
-            cubes[i].render(mtx);
+            var mtx = zlm.Mat4.createAngleAxis(
+                zlm.Vec3.unitX,
+                time_passed * 0.7 + @intToFloat(f32, i),
+            ).mul(zlm.Mat4.createAngleAxis(
+                zlm.Vec3.unitY,
+                time_passed + @intToFloat(f32, i),
+            )).mul(zlm.Mat4.createTranslationXYZ(
+                (@intToFloat(f32, i) - 1) * 5.0,
+                0,
+                0,
+            ));
+            cubes[i].render(mtx.fields);
             i += 1;
         }
 

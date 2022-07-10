@@ -203,7 +203,7 @@ pub const Cube = struct {
         c.bgfx_destroy_index_buffer(self.indices);
     }
 
-    pub fn render(self: *const Cube, mtx: [16]f32) void {
+    pub fn render(self: *const Cube, mtx: [4][4]f32) void {
         _ = c.bgfx_set_transform(&mtx, 1);
         self.top_texture.use();
         self.side_texture.use();
