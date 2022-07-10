@@ -259,7 +259,7 @@ const Renderer = struct {
             zlm.Vec3.unitY,
         );
         const proj = zlm.Mat4.createPerspective(
-            90.0,
+            std.math.pi / 2.0,
             @intToFloat(f32, width) / @intToFloat(f32, height),
             0.1,
             100.0,
