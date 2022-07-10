@@ -1,11 +1,7 @@
 const std = @import("std");
 
-const c = @cImport({
-    @cInclude("bgfx/c99/bgfx.h");
-    @cInclude("program.h");
-    @cInclude("SDL.h");
-    @cInclude("SDL_syswm.h");
-});
+const c = @import("./bridge.zig").c;
+const shader = @import("./shader.zig");
 
 const WIDTH: u32 = 640;
 const HEIGHT: u32 = 480;
@@ -88,6 +84,15 @@ pub fn main() !void {
         0,
     );
     c.bgfx_touch(0);
+
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+
+    const shader_program = try shader.ShaderProgram.initFromFile(
+        gpa.allocator(),
+        "shaders/vertex.bin",
+        "shaders/fragment.bin",
+    );
+    defer shader_program.deinit();
 
     c.realMain(window, WIDTH, HEIGHT);
 }
