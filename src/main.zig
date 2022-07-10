@@ -59,6 +59,18 @@ pub fn main() !void {
     };
     defer c.SDL_DestroyWindow(window);
 
+    if (c.SDL_SetRelativeMouseMode(c.SDL_TRUE) != 0) {
+        std.log.err("Failed to capture mouse.", .{});
+        return error.FailedSDLCaptureMouse;
+    }
+
+    var display_mode: c.SDL_DisplayMode = undefined;
+    if (c.SDL_GetDisplayMode(0, 0, &display_mode) != 0) {
+        std.log.err("Failed to get DisplayMode", .{});
+        return error.FailedSDLDisplayMode;
+    }
+    const target_ns_per_frame = std.time.ns_per_s / @intCast(usize, display_mode.refresh_rate) / 2;
+
     try registerPlatformData(window);
 
     if (!c.bgfx_init(&INIT)) {
@@ -144,8 +156,8 @@ pub fn main() !void {
             rot,
         );
 
-        if (dt < 16 * std.time.ns_per_ms) {
-            std.time.sleep(16 * std.time.ns_per_ms - dt);
+        if (dt < target_ns_per_frame) {
+            std.time.sleep(target_ns_per_frame - dt);
         }
     }
 }
