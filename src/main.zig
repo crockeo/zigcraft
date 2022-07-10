@@ -98,15 +98,35 @@ pub fn main() !void {
     const beginning = std.time.nanoTimestamp();
     var event_handler: EventHandler = EventHandler.init(INIT.resolution.width, INIT.resolution.height);
     var timer = try std.time.Timer.start();
+    var pos = zlm.Vec3.new(0, 0, 0);
     while (!event_handler.should_quit) {
-        timer.reset();
+        const dt = timer.lap();
+        const dtf = @intToFloat(f32, dt) / @intToFloat(f32, std.time.ns_per_s);
+
+        if (event_handler.input.isPressed(c.SDL_SCANCODE_W)) {
+            pos.z -= dtf * 5;
+        }
+        if (event_handler.input.isPressed(c.SDL_SCANCODE_S)) {
+            pos.z += dtf * 5;
+        }
+
+        if (event_handler.input.isPressed(c.SDL_SCANCODE_A)) {
+            pos.x += dtf * 5;
+        }
+        if (event_handler.input.isPressed(c.SDL_SCANCODE_D)) {
+            pos.x -= dtf * 5;
+        }
 
         while (event_handler.handleEvent()) {}
-        renderer.render(beginning, event_handler.window_width, event_handler.window_height);
+        renderer.render(
+            beginning,
+            event_handler.window_width,
+            event_handler.window_height,
+            pos,
+        );
 
-        const time_spent = timer.lap();
-        if (time_spent < 16 * std.time.ns_per_ms) {
-            std.time.sleep(16 * std.time.ns_per_ms - time_spent);
+        if (dt < 16 * std.time.ns_per_ms) {
+            std.time.sleep(16 * std.time.ns_per_ms - dt);
         }
     }
 }
@@ -175,10 +195,16 @@ const Renderer = struct {
         self.dirt.deinit();
     }
 
-    pub fn render(self: *const Renderer, beginning: i128, width: u32, height: u32) void {
+    pub fn render(
+        self: *const Renderer,
+        beginning: i128,
+        width: u32,
+        height: u32,
+        pos: zlm.Vec3,
+    ) void {
         const view = zlm.Mat4.createLookAt(
-            zlm.Vec3.new(0, 0, 5),
-            zlm.Vec3.zero,
+            pos.add(zlm.Vec3.new(0, 0, 1)),
+            pos,
             zlm.Vec3.unitY,
         );
         const proj = zlm.Mat4.createPerspective(
