@@ -33,8 +33,6 @@ const INIT: c.bgfx_init_t = .{
         .transientVbSize = std.math.maxInt(u32),
         .transientIbSize = std.math.maxInt(u32),
     },
-    // ./src/main.zig:10:30: error: missing field: 'resolution'
-    // const INIT: c.bgfx_init_t = .{
     .callback = null,
     .allocator = null,
 };
@@ -97,50 +95,43 @@ pub fn main() !void {
     );
     defer shader_program.deinit();
 
-    // const cobblestone = try texture.Texture.initFromFile(
-    //     gpa.allocator(),
-    //     0,
-    //     "res/cobblestone.ktx",
-    // );
-    // defer cobblestone.deinit();
-
-    // var quit: bool = false;
-    // var current_event: c.SDL_Event = undefined;
-
-    // var timer = try std.time.Timer.start();
-    // while (!quit) {
-    //     timer.reset();
-
-    //     while (c.SDL_PollEvent(&current_event) != 0) {
-    //         if (current_event.type == c.SDL_QUIT) {
-    //             quit = true;
-    //         }
-
-    //         // TODO: handle window resizing
-    //         // if (current_event.type == SDL_WINDOWEVENT) {
-    //         //     auto window_event = current_event.window;
-    //         //     if (window_event.event == SDL_WINDOWEVENT_RESIZED) {
-    //         //         width = window_event.data1;
-    //         //         height = window_event.data2;
-    //         //         bgfx::reset(width, height, BGFX_RESET_VSYNC);
-    //         //         bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
-    //         //     }
-    //         // }
-    //     }
-    //     renderer.render(width, height);
-
-    //     const time_spent = timer.lap();
-    //     if (time_spent < 16 * std.time.ns_per_ms) {
-    //         std.time.sleep(16 * std.time.ns_per_ms - time_spent);
-    //     }
-    // }
-
-    c.realMain(
-        window,
-        shader_program.handle,
-        width,
-        height,
+    const cobblestone = try texture.Texture.initFromFile(
+        gpa.allocator(),
+        0,
+        "res/cobblestone.ktx",
     );
+    defer cobblestone.deinit();
+
+    var quit: bool = false;
+    var current_event: c.SDL_Event = undefined;
+
+    var timer = try std.time.Timer.start();
+    while (!quit) {
+        timer.reset();
+
+        while (c.SDL_PollEvent(&current_event) != 0) {
+            if (current_event.type == c.SDL_QUIT) {
+                quit = true;
+            }
+
+            // TODO: handle window resizing
+            // if (current_event.type == SDL_WINDOWEVENT) {
+            //     auto window_event = current_event.window;
+            //     if (window_event.event == SDL_WINDOWEVENT_RESIZED) {
+            //         width = window_event.data1;
+            //         height = window_event.data2;
+            //         bgfx::reset(width, height, BGFX_RESET_VSYNC);
+            //         bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
+            //     }
+            // }
+        }
+        renderer.render(width, height);
+
+        const time_spent = timer.lap();
+        if (time_spent < 16 * std.time.ns_per_ms) {
+            std.time.sleep(16 * std.time.ns_per_ms - time_spent);
+        }
+    }
 }
 
 fn registerPlatformData(window: *c.SDL_Window) !void {
@@ -208,38 +199,62 @@ const Renderer = struct {
     }
 
     pub fn render(self: *const Renderer, width: u32, height: u32) void {
-    // const bx::Vec3 at = {0.0f, 0.0f, 0.0f};
-    // const bx::Vec3 eye = {0.0f, 0.0f, 10.0f};
-    // float view[16];
-    // bx::mtxLookAt(view, eye, at);
+        // TODO: these are hard-coded from C++ output.
+        // find a linalg library and replace with dynamically computed value
+        //
+        // for reference, this is the original C++ code:
+        //   const bx::Vec3 at = {0.0f, 0.0f, 0.0f};
+        //   const bx::Vec3 eye = {0.0f, 0.0f, 10.0f};
+        //   float view[16];
+        //   bx::mtxLookAt(view, eye, at);
 
-    // float proj[16];
-    // bx::mtxProj(proj, 60.0f, float(width) / float(height), 0.1f, 100.0f,
-    //             bgfx::getCaps()->homogeneousDepth);
-        // bgfx::setViewTransform(0, view, proj);
-        c.bgfx_set_view_transform(
-        );
-
+        //   float proj[16];
+        //   bx::mtxProj(proj, 60.0f, float(width) / float(height), 0.1f, 100.0f,
+        //               bgfx::getCaps()->homogeneousDepth);
+        const view =[16]f32{ -1.00001, 0, 0, 0, 0, 1.00001, 0, 0, 0, 0, -1, 0, -0, -0, 10, 1, };
+        const proj = [16]f32{ 1.29904, 0, 0, 0, 0, 1.73205, 0, 0, -0, -0, 1.001, 1, 0, 0, -0.1001, 0, };
+        c.bgfx_set_view_transform(0, &view, &proj);
         c.bgfx_set_view_rect(0, 0, 0, @intCast(u16, width), @intCast(u16, height));
         c.bgfx_touch(0);
-    // bgfx::touch(0);
 
-    // auto now = std::chrono::steady_clock::now();
-    // float time_sec =
-    //     std::chrono::duration_cast<std::chrono::milliseconds>(now - start)
-    //         .count() /
-    //     1000.f;
+        const cubes = [_]*const cube.Cube{
+            &self.grass,
+            &self.cobblestone,
+            &self.dirt,
+        };
+        var i: usize = 0;
+        while (i < cubes.len) {
+            // TODO: make the cubes rotate
+            // for reference...
+            //
+            // getting the time:
+            //
+            //   auto now = std::chrono::steady_clock::now();
+            //   float time_sec =
+            //       std::chrono::duration_cast<std::chrono::milliseconds>(now - start)
+            //           .count() /
+            //       1000.f;
+            //
+            // and then using it:
+            //
+            //   float mtx[16];
+            //   bx::mtxRotateXY(mtx, time_sec * 0.7 + i, time_sec + i);
+            //   mtx[12] = ((float)i - 1) * 3.0f;
+            //   mtx[13] = 0.0f;
+            //   mtx[14] = 0.0f;
+            var mtx = [16]f32{
+                1.0, 0.0, 0.0, 0.0,
+                0.0, 1.0, 0.0, 0.0,
+                0.0, 0.0, 1.0, 0.0,
+                0.0, 0.0, 0.0, 1.0,
+            };
+            mtx[12] = (@intToFloat(f32, i) - 1) * 3.0;
+            mtx[13] = 0;
+            mtx[14] = 0;
+            cubes[i].render(mtx);
+            i += 1;
+        }
 
-    // Cube* cubes[] = {&_grass_cube, &_cobblestone_cube, &_dirt_cube};
-    // for (size_t i = 0; i < 3; i++) {
-    //   float mtx[16];
-    //   bx::mtxRotateXY(mtx, time_sec * 0.7 + i, time_sec + i);
-    //   mtx[12] = ((float)i - 1) * 3.0f;
-    //   mtx[13] = 0.0f;
-    //   mtx[14] = 0.0f;
-    //   cubes[i]->render(mtx);
-        // }
-        self.grass.render([16]f32{1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0});
 
         _ = c.bgfx_frame(false);
     }
