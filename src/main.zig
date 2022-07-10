@@ -1,4 +1,5 @@
 const std = @import("std");
+const zlm = @import("zlm");
 
 const c = @import("./bridge.zig").c;
 const cube = @import("./cube.zig");
@@ -199,21 +200,19 @@ const Renderer = struct {
     }
 
     pub fn render(self: *const Renderer, width: u32, height: u32) void {
-        // TODO: these are hard-coded from C++ output.
-        // find a linalg library and replace with dynamically computed value
-        //
-        // for reference, this is the original C++ code:
-        //   const bx::Vec3 at = {0.0f, 0.0f, 0.0f};
-        //   const bx::Vec3 eye = {0.0f, 0.0f, 10.0f};
-        //   float view[16];
-        //   bx::mtxLookAt(view, eye, at);
+        const view = zlm.Mat4.createLookAt(
+            zlm.Vec3.new(0, 0, 5),
+            zlm.Vec3.zero,
+            zlm.Vec3.unitY,
+        );
+        const proj = zlm.Mat4.createPerspective(
+            90.0,
+            @intToFloat(f32, width) / @intToFloat(f32, height),
+            0.1,
+            100.0,
+        );
 
-        //   float proj[16];
-        //   bx::mtxProj(proj, 60.0f, float(width) / float(height), 0.1f, 100.0f,
-        //               bgfx::getCaps()->homogeneousDepth);
-        const view =[16]f32{ -1.00001, 0, 0, 0, 0, 1.00001, 0, 0, 0, 0, -1, 0, -0, -0, 10, 1, };
-        const proj = [16]f32{ 1.29904, 0, 0, 0, 0, 1.73205, 0, 0, -0, -0, 1.001, 1, 0, 0, -0.1001, 0, };
-        c.bgfx_set_view_transform(0, &view, &proj);
+        c.bgfx_set_view_transform(0, &view.fields, &proj.fields);
         c.bgfx_set_view_rect(0, 0, 0, @intCast(u16, width), @intCast(u16, height));
         c.bgfx_touch(0);
 
