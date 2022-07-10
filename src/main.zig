@@ -64,6 +64,7 @@ pub fn main() !void {
         return error.FailedSDLCaptureMouse;
     }
 
+    // TODO: fetch display mode (and update?) based on target display
     var display_mode: c.SDL_DisplayMode = undefined;
     if (c.SDL_GetDisplayMode(0, 0, &display_mode) != 0) {
         std.log.err("Failed to get DisplayMode", .{});
