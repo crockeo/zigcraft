@@ -142,7 +142,8 @@ pub fn main() !void {
         ));
 
         const forward4 = zlm.Vec4.new(0, 0, -1, 0).transform(rot);
-        const forward = zlm.vec3(forward4.x, forward4.y, forward4.z);
+        var forward = zlm.vec3(forward4.x, forward4.y, forward4.z);
+        forward.y = 0; // we don't want to be able to go vertically w/ just looking around
 
         const left4 = zlm.Vec4.unitX.transform(rot);
         const left = zlm.vec3(left4.x, left4.y, left4.z);
