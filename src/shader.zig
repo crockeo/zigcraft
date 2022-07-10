@@ -50,7 +50,7 @@ pub const ShaderProgram = struct {
         };
     }
 
-    pub fn initFromFile(allocator: std.mem.Allocator, vertex_path: []const u8, fragment_path: []const u8) !ShaderProgram {
+    pub fn initFromFiles(allocator: std.mem.Allocator, vertex_path: []const u8, fragment_path: []const u8) !ShaderProgram {
         const vertex_shader = try Shader.initFromFile(allocator, vertex_path);
         const fragment_shader = try Shader.initFromFile(allocator, fragment_path);
         return ShaderProgram.init(vertex_shader, fragment_shader);

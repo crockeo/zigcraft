@@ -4,12 +4,12 @@ const c = @import("./bridge.zig").c;
 
 pub const Texture = struct {
     allocator: std.mem.Allocator,
-    index: u32,
+    index: u8,
     name: []const u8,
     uniform: c.bgfx_uniform_handle_t,
     handle: c.bgfx_texture_handle_t,
 
-    pub fn init(allocator: std.mem.Allocator, index: u32, contents: []const u8) !Texture {
+    pub fn init(allocator: std.mem.Allocator, index: u8, contents: []const u8) !Texture {
         const copy_contents = c.bgfx_copy(
             @ptrCast(*const anyopaque, contents),
             @intCast(u32, contents.len),
@@ -34,7 +34,7 @@ pub const Texture = struct {
         };
     }
 
-    pub fn initFromFile(allocator: std.mem.Allocator, index: u32, path: []const u8) !Texture {
+    pub fn initFromFile(allocator: std.mem.Allocator, index: u8, path: []const u8) !Texture {
         const cwd = std.fs.cwd();
 
         var file = try cwd.openFile(path, .{});
@@ -55,6 +55,6 @@ pub const Texture = struct {
     }
 
     pub fn use(self: *const Texture) void {
-        c.bgfx_set_texture(self.index, self.uniform, self.handle);
+        c.bgfx_set_texture(self.index, self.uniform, self.handle, std.math.maxInt(u32));
     }
 };
