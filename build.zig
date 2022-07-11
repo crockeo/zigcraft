@@ -192,8 +192,18 @@ fn pkgConfig(allocator: std.mem.Allocator, exe: *std.build.LibExeObjStep, pkg_na
     defer allocator.free(result.stdout);
     defer allocator.free(result.stderr);
 
+    if (result.term.Exited != 0) {
+        std.log.err("Failed to run pkg-config:\n{s}", .{result.stderr});
+        return error.PkgConfigFailed;
+    }
+
     var iter = std.mem.split(u8, std.mem.trim(u8, result.stdout, " \n"), " ");
     while (iter.next()) |arg| {
+        if (arg.len < 3) {
+            std.log.err("Failed to parse pkg-config argument: '{s}'", .{arg});
+            return error.InvalidArg;
+        }
+
         const flag = arg[0..2];
         const content = arg[2..];
 
