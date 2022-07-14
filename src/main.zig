@@ -118,7 +118,6 @@ pub fn main() !void {
         if (dt < target_ns_per_frame) {
             std.time.sleep(target_ns_per_frame - dt);
         }
-
     }
 }
 
