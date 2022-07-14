@@ -101,7 +101,6 @@ pub fn main() !void {
     var world = try World.init(gpa.allocator());
     defer world.deinit();
 
-    const beginning = std.time.nanoTimestamp();
     var event_handler: EventHandler = EventHandler.init(INIT.resolution.width, INIT.resolution.height);
     var timer = try std.time.Timer.start();
     while (!event_handler.should_quit) {
@@ -112,7 +111,6 @@ pub fn main() !void {
 
         try world.update(&event_handler.input, dtf);
         try world.render(
-            beginning,
             event_handler.window_width,
             event_handler.window_height,
         );

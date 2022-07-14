@@ -8,6 +8,7 @@ const events = @import("./events.zig");
 
 pub const World = struct {
     renderer: Renderer,
+    now: f32,
 
     pos: zlm.Vec3,
     rot: zlm.Vec2,
@@ -15,6 +16,8 @@ pub const World = struct {
     pub fn init(allocator: std.mem.Allocator) !World {
         return World{
             .renderer = try Renderer.init(allocator),
+            .now = 0.0,
+
             .pos = zlm.Vec3.new(0, 0, 0),
             .rot = zlm.Vec2.new(0, 0),
         };
@@ -25,6 +28,8 @@ pub const World = struct {
     }
 
     pub fn update(self: *World, input: *events.InputState, dt: f32) !void {
+        self.now += dt;
+
         // Note that rotX and rotY
         // come from mouseRot.dy and mouseRot.dx
         // because of 2D movement vs. rotational axes.
@@ -61,9 +66,9 @@ pub const World = struct {
         }
     }
 
-    pub fn render(self: *const World, beginning: i128, window_width: u32, window_height: u32) !void {
+    pub fn render(self: *const World, window_width: u32, window_height: u32) !void {
         self.renderer.render(
-            beginning,
+            self.now,
             window_width,
             window_height,
             self.pos,
@@ -127,7 +132,7 @@ const Renderer = struct {
 
     pub fn render(
         self: *const Renderer,
-        beginning: i128,
+        now: f32,
         width: u32,
         height: u32,
         pos: zlm.Vec3,
@@ -158,16 +163,14 @@ const Renderer = struct {
             &self.cobblestone,
             &self.dirt,
         };
-        const now = std.time.nanoTimestamp();
-        const time_passed = @intToFloat(f32, now - beginning) / @intToFloat(f32, std.time.ns_per_s);
         var i: usize = 0;
         while (i < cubes.len) {
             var mtx = zlm.Mat4.createAngleAxis(
                 zlm.Vec3.unitX,
-                time_passed * 0.7 + @intToFloat(f32, i),
+                now * 0.7 + @intToFloat(f32, i),
             ).mul(zlm.Mat4.createAngleAxis(
                 zlm.Vec3.unitY,
-                time_passed + @intToFloat(f32, i),
+                now + @intToFloat(f32, i),
             )).mul(zlm.Mat4.createTranslationXYZ(
                 (@intToFloat(f32, i) - 1) * 5.0,
                 0,
