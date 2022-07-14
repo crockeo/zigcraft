@@ -10,18 +10,14 @@ pub const World = struct {
     renderer: Renderer,
     now: f32,
 
-    pos: zlm.Vec3,
-    vel: zlm.Vec3,
-    rot: zlm.Vec2,
+    player: Player,
 
     pub fn init(allocator: std.mem.Allocator) !World {
         return World{
             .renderer = try Renderer.init(allocator),
             .now = 0.0,
 
-            .rot = zlm.Vec2.new(0, 0),
-            .vel = zlm.Vec3.new(0, 0, 0),
-            .pos = zlm.Vec3.new(0, 0, 0),
+            .player = Player.init(),
         };
     }
 
@@ -31,7 +27,37 @@ pub const World = struct {
 
     pub fn update(self: *World, input: *events.InputState, dt: f32) !void {
         self.now += dt;
+        self.player.update(input, dt);
+    }
 
+    pub fn render(self: *const World, window_width: u32, window_height: u32) !void {
+        self.renderer.render(
+            self.now,
+            window_width,
+            window_height,
+            self.player.pos,
+            self.player.getRotMatrix(),
+        );
+    }
+
+};
+
+const Player = struct {
+    const Self = @This();
+
+    pos: zlm.Vec3,
+    vel: zlm.Vec3,
+    rot: zlm.Vec2,
+
+    pub fn init() Player {
+        return Player{
+            .rot = zlm.Vec2.new(0, 0),
+            .vel = zlm.Vec3.new(0, 0, 0),
+            .pos = zlm.Vec3.new(0, 0, 0),
+        };
+    }
+
+    pub fn update(self: *Self, input: *events.InputState, dt: f32) void {
         // Note that rotX and rotY
         // come from mouseRot.dy and mouseRot.dx
         // because of 2D movement vs. rotational axes.
@@ -82,17 +108,7 @@ pub const World = struct {
         self.pos = self.pos.add(rotVel.scale(dt));
     }
 
-    pub fn render(self: *const World, window_width: u32, window_height: u32) !void {
-        self.renderer.render(
-            self.now,
-            window_width,
-            window_height,
-            self.pos,
-            self.getRotMatrix(),
-        );
-    }
-
-    fn getRotMatrix(self: *const World) zlm.Mat4 {
+    fn getRotMatrix(self: *const Self) zlm.Mat4 {
         return zlm.Mat4.createAngleAxis(
             zlm.Vec3.unitX,
             self.rot.x,
