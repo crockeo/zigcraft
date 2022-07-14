@@ -4,8 +4,8 @@ const zlm = @import("zlm");
 const c = @import("./bridge.zig").c;
 const cube = @import("./cube.zig");
 const EventHandler = @import("./events.zig").EventHandler;
-const shader = @import("./shader.zig");
 const texture = @import("./texture.zig");
+const World = @import("./world.zig").World;
 
 const INIT: c.bgfx_init_t = .{
     .type = c.BGFX_RENDERER_TYPE_COUNT,
@@ -98,82 +98,29 @@ pub fn main() !void {
     c.bgfx_touch(0);
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const renderer = try Renderer.init(gpa.allocator());
-    defer renderer.deinit();
-
-    const shader_program = try shader.ShaderProgram.initFromFiles(
-        gpa.allocator(),
-        "shaders/vertex.bin",
-        "shaders/fragment.bin",
-    );
-    defer shader_program.deinit();
+    var world = try World.init(gpa.allocator());
+    defer world.deinit();
 
     const beginning = std.time.nanoTimestamp();
     var event_handler: EventHandler = EventHandler.init(INIT.resolution.width, INIT.resolution.height);
     var timer = try std.time.Timer.start();
-    var pos = zlm.Vec3.new(0, 0, 0);
-
-    var rotX: f32 = 0.0;
-    var rotY: f32 = 0.0;
-
     while (!event_handler.should_quit) {
         const dt = timer.lap();
         const dtf = @intToFloat(f32, dt) / @intToFloat(f32, std.time.ns_per_s);
 
-        // Note that rotX and rotY
-        // come from mouseRot.dy and mouseRot.dx
-        // because of 2D movement vs. rotational axes.
-        const mouseRot = event_handler.input.getMouseRot();
-        rotY -= mouseRot.x * std.math.pi;
-        rotX += mouseRot.y * std.math.pi;
-        if (rotX < -std.math.pi / 3.0) {
-            rotX = -std.math.pi / 3.0;
-        }
-        if (rotX > std.math.pi / 3.0) {
-            rotX = std.math.pi / 3.0;
-        }
-
-        const rot = zlm.Mat4.createAngleAxis(
-            zlm.Vec3.unitX,
-            rotX,
-        ).mul(zlm.Mat4.createAngleAxis(
-            zlm.Vec3.unitY,
-            rotY,
-        ));
-
-        const forward4 = zlm.Vec4.new(0, 0, -1, 0).transform(rot);
-        var forward = zlm.vec3(forward4.x, forward4.y, forward4.z);
-        forward.y = 0; // we don't want to be able to go vertically w/ just looking around
-
-        const left4 = zlm.Vec4.unitX.transform(rot);
-        const left = zlm.vec3(left4.x, left4.y, left4.z);
-
-        if (event_handler.input.isPressed(c.SDL_SCANCODE_W)) {
-            pos = pos.add(forward.scale(dtf * 5));
-        }
-        if (event_handler.input.isPressed(c.SDL_SCANCODE_S)) {
-            pos = pos.add(forward.scale(-dtf * 5));
-        }
-
-        if (event_handler.input.isPressed(c.SDL_SCANCODE_A)) {
-            pos = pos.add(left.scale(dtf * 5));
-        }
-        if (event_handler.input.isPressed(c.SDL_SCANCODE_D)) {
-            pos = pos.add(left.scale(-dtf * 5));
-        }
-
         while (event_handler.handleEvent()) {}
-        renderer.render(
+
+        try world.update(&event_handler.input, dtf);
+        try world.render(
             beginning,
             event_handler.window_width,
             event_handler.window_height,
-            pos,
-            rot,
         );
 
         if (dt < target_ns_per_frame) {
             std.time.sleep(target_ns_per_frame - dt);
         }
+
     }
 }
 
@@ -197,103 +144,3 @@ fn registerPlatformData(window: *c.SDL_Window) !void {
     c.bgfx_set_platform_data(&pd);
     _ = c.bgfx_render_frame(-1);
 }
-
-const Renderer = struct {
-    grass: cube.Cube,
-    cobblestone: cube.Cube,
-    dirt: cube.Cube,
-
-    pub fn init(allocator: std.mem.Allocator) !Renderer {
-        return Renderer{
-            .grass = try cube.Cube.init(
-                allocator,
-                "res/grass_top.ktx",
-                "res/grass_side.ktx",
-                "res/dirt.ktx",
-                2.0,
-                2.0,
-                2.0,
-            ),
-            .cobblestone = try cube.Cube.init(
-                allocator,
-                "res/cobblestone.ktx",
-                "res/cobblestone.ktx",
-                "res/cobblestone.ktx",
-                2.0,
-                2.0,
-                2.0,
-            ),
-            .dirt = try cube.Cube.init(
-                allocator,
-                "res/dirt.ktx",
-                "res/dirt.ktx",
-                "res/dirt.ktx",
-                2.0,
-                2.0,
-                2.0,
-            ),
-        };
-    }
-
-    pub fn deinit(self: *const Renderer) void {
-        self.grass.deinit();
-        self.cobblestone.deinit();
-        self.dirt.deinit();
-    }
-
-    pub fn render(
-        self: *const Renderer,
-        beginning: i128,
-        width: u32,
-        height: u32,
-        pos: zlm.Vec3,
-        rot: zlm.Mat4,
-    ) void {
-        const lookAt4 = zlm.Vec4.unitZ.transform(rot);
-        const lookAt = pos.add(zlm.Vec3.new(lookAt4.x, lookAt4.y, lookAt4.z));
-
-
-        const view = zlm.Mat4.createLookAt(
-            lookAt,
-            pos,
-            zlm.Vec3.unitY,
-        );
-        const proj = zlm.Mat4.createPerspective(
-            std.math.pi / 2.0,
-            @intToFloat(f32, width) / @intToFloat(f32, height),
-            0.1,
-            100.0,
-        );
-
-        c.bgfx_set_view_transform(0, &view.fields, &proj.fields);
-        c.bgfx_set_view_rect(0, 0, 0, @intCast(u16, width), @intCast(u16, height));
-        c.bgfx_touch(0);
-
-        const cubes = [_]*const cube.Cube{
-            &self.grass,
-            &self.cobblestone,
-            &self.dirt,
-        };
-        const now = std.time.nanoTimestamp();
-        const time_passed = @intToFloat(f32, now - beginning) / @intToFloat(f32, std.time.ns_per_s);
-        var i: usize = 0;
-        while (i < cubes.len) {
-            var mtx = zlm.Mat4.createAngleAxis(
-                zlm.Vec3.unitX,
-                time_passed * 0.7 + @intToFloat(f32, i),
-            ).mul(zlm.Mat4.createAngleAxis(
-                zlm.Vec3.unitY,
-                time_passed + @intToFloat(f32, i),
-            )).mul(zlm.Mat4.createTranslationXYZ(
-                (@intToFloat(f32, i) - 1) * 5.0,
-                0,
-                0,
-            ));
-            cubes[i].render(mtx.fields);
-            i += 1;
-        }
-
-
-        _ = c.bgfx_frame(false);
-    }
-};
