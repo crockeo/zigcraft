@@ -4,6 +4,80 @@ const c = @import("./bridge.zig").c;
 const shader = @import("./shader.zig");
 const texture = @import("./texture.zig");
 
+pub const CubeType = enum {
+    grass,
+    dirt,
+    cobblestone,
+    count,
+};
+
+pub const CubeRegistry = struct {
+    allocator: std.mem.Allocator,
+    cubes: []Cube,
+
+    pub fn init(allocator: std.mem.Allocator) !CubeRegistry {
+        const cubes = try allocator.alloc(Cube, @enumToInt(CubeType.count));
+
+        var i: usize = 0;
+        while (i < @enumToInt(CubeType.count)) {
+            cubes[i] = try CubeRegistry.createCube(allocator, @intToEnum(CubeType, i));
+            i += 1;
+        }
+
+        return CubeRegistry{
+            .allocator = allocator,
+            .cubes = cubes,
+        };
+    }
+
+    pub fn deinit(self: *const CubeRegistry) void {
+        var i: usize = 0;
+        while (i < @enumToInt(CubeType.count)) {
+            self.cubes[i].deinit();
+            i += 1;
+        }
+        self.allocator.free(self.cubes);
+    }
+
+    pub fn getCube(self: *const CubeRegistry, cube_type: CubeType) *const Cube {
+        return &self.cubes[@enumToInt(cube_type)];
+    }
+
+    fn createCube(allocator: std.mem.Allocator, cube_type: CubeType) !Cube {
+        return switch (cube_type) {
+            CubeType.grass => try Cube.init(
+                allocator,
+                "res/grass_top.ktx",
+                "res/grass_side.ktx",
+                "res/dirt.ktx",
+                2.0,
+                2.0,
+                2.0,
+            ),
+            CubeType.cobblestone => try Cube.init(
+                allocator,
+                "res/cobblestone.ktx",
+                "res/cobblestone.ktx",
+                "res/cobblestone.ktx",
+                2.0,
+                2.0,
+                2.0,
+            ),
+            CubeType.dirt => try Cube.init(
+                allocator,
+                "res/dirt.ktx",
+                "res/dirt.ktx",
+                "res/dirt.ktx",
+                2.0,
+                2.0,
+                2.0,
+            ),
+
+            CubeType.count => error.CantConstructCubeTypeCount,
+        };
+    }
+};
+
 pub const Vertex = struct {
     x: f32,
     y: f32,

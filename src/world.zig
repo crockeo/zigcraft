@@ -120,46 +120,16 @@ const Player = struct {
 };
 
 const Renderer = struct {
-    grass: cube.Cube,
-    cobblestone: cube.Cube,
-    dirt: cube.Cube,
+    registry: cube.CubeRegistry,
 
     pub fn init(allocator: std.mem.Allocator) !Renderer {
         return Renderer{
-            .grass = try cube.Cube.init(
-                allocator,
-                "res/grass_top.ktx",
-                "res/grass_side.ktx",
-                "res/dirt.ktx",
-                2.0,
-                2.0,
-                2.0,
-            ),
-            .cobblestone = try cube.Cube.init(
-                allocator,
-                "res/cobblestone.ktx",
-                "res/cobblestone.ktx",
-                "res/cobblestone.ktx",
-                2.0,
-                2.0,
-                2.0,
-            ),
-            .dirt = try cube.Cube.init(
-                allocator,
-                "res/dirt.ktx",
-                "res/dirt.ktx",
-                "res/dirt.ktx",
-                2.0,
-                2.0,
-                2.0,
-            ),
+            .registry = try cube.CubeRegistry.init(allocator),
         };
     }
 
     pub fn deinit(self: *const Renderer) void {
-        self.grass.deinit();
-        self.cobblestone.deinit();
-        self.dirt.deinit();
+        self.registry.deinit();
     }
 
     pub fn render(
@@ -191,9 +161,9 @@ const Renderer = struct {
         c.bgfx_touch(0);
 
         const cubes = [_]*const cube.Cube{
-            &self.grass,
-            &self.cobblestone,
-            &self.dirt,
+            self.registry.getCube(cube.CubeType.grass),
+            self.registry.getCube(cube.CubeType.cobblestone),
+            self.registry.getCube(cube.CubeType.dirt),
         };
         var i: usize = 0;
         while (i < cubes.len) {
