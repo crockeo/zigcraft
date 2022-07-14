@@ -70,8 +70,11 @@ pub const World = struct {
             self.vel.x += mul * dt * acceleration;
         }
 
-        if (self.vel.length2() > maxSpeed * maxSpeed) {
-            self.vel = self.vel.normalize().scale(maxSpeed);
+        const lateral = self.vel.swizzle("x0z");
+        if (lateral.length2() > maxSpeed * maxSpeed) {
+            const yComponent = self.vel.y;
+            self.vel = lateral.normalize().scale(maxSpeed);
+            self.vel.y = yComponent;
         }
 
         const rot = self.getRotMatrix();
