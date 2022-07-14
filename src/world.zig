@@ -45,46 +45,30 @@ pub const World = struct {
             self.rot.x = std.math.pi / 3.0;
         }
 
-        const rot = self.getRotMatrix();
-        const forward4 = zlm.Vec4.new(0, 0, -1, 0).transform(rot);
-        var forward = zlm.vec3(forward4.x, forward4.y, forward4.z);
-        forward.y = 0; // we don't want to be able to go vertically w/ just looking around
-
-        const left4 = zlm.Vec4.unitX.transform(rot);
-        const left = zlm.vec3(left4.x, left4.y, left4.z);
-
         const maxSpeed = 10.0;
         const acceleration = 80.0;
 
         if (input.isPressed(c.SDL_SCANCODE_W)) {
-            self.vel = self.vel.add(forward.scale(dt * acceleration));
+            self.vel.z -= dt * acceleration;
         }
         if (input.isPressed(c.SDL_SCANCODE_S)) {
-            self.vel = self.vel.add(forward.scale(-dt * acceleration));
+            self.vel.z += dt * acceleration;
         }
-        const forwardDot = self.vel.dot(forward);
-        if (!input.isPressed(c.SDL_SCANCODE_W) and !input.isPressed(c.SDL_SCANCODE_S) and forwardDot != 0) {
-            const mul: f32 = if (forwardDot > 0) -1.0 else 1.0;
-            self.vel = self.vel.add(forward.scale(mul * dt * acceleration));
+        if (!input.isPressed(c.SDL_SCANCODE_W) and !input.isPressed(c.SDL_SCANCODE_S) and self.vel.z != 0) {
+            const mul: f32 = if (self.vel.z > 0) -1.0 else 1.0;
+            self.vel.z += mul * dt * acceleration;
         }
 
         if (input.isPressed(c.SDL_SCANCODE_A)) {
-            self.vel = self.vel.add(left.scale(dt * acceleration));
+            self.vel.x += dt * acceleration;
         }
         if (input.isPressed(c.SDL_SCANCODE_D)) {
-            self.vel = self.vel.add(left.scale(-dt * acceleration));
+            self.vel.x -= dt * acceleration;
         }
-        const leftDot = self.vel.dot(left);
-        if (!input.isPressed(c.SDL_SCANCODE_A) and !input.isPressed(c.SDL_SCANCODE_D) and leftDot != 0) {
-            const mul: f32 = if (leftDot > 0) -1.0 else 1.0;
-            self.vel = self.vel.add(left.scale(mul * dt * acceleration));
+        if (!input.isPressed(c.SDL_SCANCODE_A) and !input.isPressed(c.SDL_SCANCODE_D) and self.vel.x != 0) {
+            const mul: f32 = if (self.vel.x > 0) -1.0 else 1.0;
+            self.vel.x += mul * dt * acceleration;
         }
-
-        // TODO: actually modelling velocity feels sluggish.
-        // instead:
-        // - model the current velocity outside of the direction the player is turning
-        // - apply the rotation to the direction of the player after the fact
-        // - then if someone turns, they carry their velocity with them
 
         // TODO: piecewize clamp like this
         // means we go faster if we're moving in the diagonal
@@ -98,7 +82,9 @@ pub const World = struct {
         //     self.vel.x = 0;
         // }
 
-        self.pos = self.pos.add(self.vel.scale(dt));
+        const rot = self.getRotMatrix();
+        const rotVel = self.vel.swizzle("xyz0").transform(rot).swizzle("x0z");
+        self.pos = self.pos.add(rotVel.scale(dt));
     }
 
     pub fn render(self: *const World, window_width: u32, window_height: u32) !void {
