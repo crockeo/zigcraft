@@ -70,17 +70,9 @@ pub const World = struct {
             self.vel.x += mul * dt * acceleration;
         }
 
-        // TODO: piecewize clamp like this
-        // means we go faster if we're moving in the diagonal
-        // which feels super weird
-        self.vel.x = std.math.clamp(self.vel.x, -maxSpeed, maxSpeed);
-        self.vel.y = std.math.clamp(self.vel.y, -maxSpeed, maxSpeed);
-        self.vel.z = std.math.clamp(self.vel.z, -maxSpeed, maxSpeed);
-
-        // TODO: check that we're not holding anything down
-        // if (std.math.absFloat(self.vel.x) < 2 * dt * acceleration) {
-        //     self.vel.x = 0;
-        // }
+        if (self.vel.length2() > maxSpeed * maxSpeed) {
+            self.vel = self.vel.normalize().scale(maxSpeed);
+        }
 
         const rot = self.getRotMatrix();
         const rotVel = self.vel.swizzle("xyz0").transform(rot).swizzle("x0z");
