@@ -11,13 +11,32 @@ pub const World = struct {
     now: f32,
 
     player: Player,
+    chunk: [32][32][32]cube.CubeType,
 
     pub fn init(allocator: std.mem.Allocator) !World {
+        var chunk: [32][32][32]cube.CubeType = undefined;
+        var i: usize = 0;
+        var j: usize = 0;
+        var k: usize = 0;
+        while (i < 32) {
+            chunk[i][j][k] = cube.CubeType.count;
+            k += 1;
+            if (k >= 32) {
+                k = 0;
+                j += 1;
+            }
+            if (j >= 32) {
+                j = 0;
+                i += 1;
+            }
+        }
+
         return World{
             .renderer = try Renderer.init(allocator),
             .now = 0.0,
 
             .player = Player.init(),
+            .chunk = chunk,
         };
     }
 
