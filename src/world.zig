@@ -11,38 +11,31 @@ pub const World = struct {
     now: f32,
 
     player: Player,
-    chunk: [32][32][32]cube.CubeType,
+    chunk: Chunk,
 
     pub fn init(allocator: std.mem.Allocator) !World {
-        var chunk: [32][32][32]cube.CubeType = undefined;
-        var x: usize = 0;
-        var y: usize = 0;
-        var z: usize = 0;
-
+        var chunk = Chunk.init();
         var rnd = std.rand.DefaultPrng.init(@intCast(u64, std.time.nanoTimestamp() >> 64));
-        while (x < 32) {
-            if (y > 14) {
-                chunk[x][y][z] = cube.CubeType.count;
-            } else if (y == 14) {
-                chunk[x][y][z] = cube.CubeType.grass;
-            } else {
-                const dirtChance = @intToFloat(f32, y) / 14;
-                const roll = rnd.random().float(f32);
-                if (roll <= dirtChance) {
-                    chunk[x][y][z] = cube.CubeType.dirt;
-                } else {
-                    chunk[x][y][z] = cube.CubeType.cobblestone;
+        var x: usize = 0;
+        while (x < Chunk.WIDTH) : (x += 1) {
+            var y: usize = 0;
+            while (y < Chunk.HEIGHT) : (y += 1) {
+                var z: usize = 0;
+                while (z < Chunk.DEPTH) : (z += 1) {
+                    if (y > Chunk.HEIGHT / 2) {
+                        continue;
+                    } else if (y == Chunk.HEIGHT / 2) {
+                        chunk.setXYZ(x, y, z, cube.CubeType.grass);
+                    } else {
+                        const dirtChance = @intToFloat(f32, y) / @intToFloat(f32, Chunk.HEIGHT) / 2;
+                        const roll = rnd.random().float(f32);
+                        if (roll <= dirtChance) {
+                            chunk.setXYZ(x, y, z, cube.CubeType.dirt);
+                        } else {
+                            chunk.setXYZ(x, y, z, cube.CubeType.cobblestone);
+                        }
+                    }
                 }
-            }
-
-            z += 1;
-            if (z >= 32) {
-                z = 0;
-                y += 1;
-            }
-            if (y >= 32) {
-                y = 0;
-                x += 1;
             }
         }
 
@@ -72,7 +65,61 @@ pub const World = struct {
             self,
         );
     }
+};
 
+const Chunk = struct {
+    const Self = @This();
+
+    const WIDTH: usize = 64;
+    const HEIGHT: usize = 128;
+    const DEPTH: usize = 64;
+    const CHUNK_LEN: usize = Self.WIDTH * Self.HEIGHT * Self.DEPTH;
+
+    cubes: [Self.WIDTH][Self.HEIGHT][Self.DEPTH]cube.CubeType,
+
+    pub fn init() Self {
+        var self = Self{
+            .cubes = undefined,
+        };
+        var i: usize = 0;
+        while (i < Self.WIDTH * Self.HEIGHT * Self.DEPTH) : (i += 1) {
+            self.set(i, cube.CubeType.count);
+        }
+        return self;
+    }
+
+    pub fn setXYZ(self: *Self, x: usize, y: usize, z: usize, cubeType: cube.CubeType) void {
+        self.cubes[x][y][z] = cubeType;
+    }
+
+    pub fn set(self: *Self, index: usize, cubeType: cube.CubeType) void {
+        const pos = Self.indexToXYZ(index);
+        self.cubes[pos.x][pos.y][pos.z] = cubeType;
+    }
+
+    pub fn getXYZ(self: *const Self, x: usize, y: usize, z: usize) cube.CubeType {
+        return self.cubes[x][y][z];
+    }
+
+    pub fn get(self: *Self, index: usize) cube.CubeType {
+        const pos = Self.indexToXYZ(index);
+        return self.cubes[pos.x][pos.y][pos.z];
+    }
+
+    fn indexToXYZ(index: usize) struct{x: usize, y: usize, z: usize} {
+        const x: usize = index / (Self.HEIGHT * Self.DEPTH);
+        const y: usize = index % (Self.HEIGHT * Self.DEPTH) / Self.WIDTH;
+        const z: usize = index % (Self.HEIGHT * Self.DEPTH) % Self.WIDTH;
+        return .{
+            .x = x,
+            .y = y,
+            .z = z,
+        };
+    }
+
+    fn xyzToIndex(x: usize, y: usize, z: usize) usize {
+        return x * (Self.HEIGHT * Self.DEPTH) + y * Self.WIDTH + z;
+    }
 };
 
 const Player = struct {
@@ -197,19 +244,22 @@ const Renderer = struct {
         c.bgfx_set_view_rect(0, 0, 0, @intCast(u16, width), @intCast(u16, height));
         c.bgfx_touch(0);
 
-        // TODO: hate this syntax. how fix?
-        for (world.chunk) |x, xi| {
-            for (x) |y, yi| {
-                for (y) |cubeType, zi| {
+        var x: usize = 0;
+        while (x < Chunk.WIDTH) : (x += 1) {
+            var y: usize = 0;
+            while (y < Chunk.HEIGHT) : (y += 1) {
+                var z: usize = 0;
+                while (z < Chunk.DEPTH) : (z += 1) {
+                    const cubeType = world.chunk.getXYZ(x, y, z);
                     if (cubeType == cube.CubeType.count) {
                         continue;
                     }
 
                     const cubeInstance = self.registry.getCube(cubeType);
                     const mtx = zlm.Mat4.createTranslationXYZ(
-                        (@intToFloat(f32, xi) - 16.0) * 2.0,
-                        (@intToFloat(f32, yi) - 16.0) * 2.0,
-                        (@intToFloat(f32, zi) - 16.0) * 2.0,
+                        (@intToFloat(f32, x) - @intToFloat(f32, Chunk.WIDTH) / 2.0) * 2.0,
+                        (@intToFloat(f32, y) - @intToFloat(f32, Chunk.HEIGHT) / 2.0) * 2.0,
+                        (@intToFloat(f32, z) - @intToFloat(f32, Chunk.DEPTH) / 2.0) * 2.0,
                     );
                     cubeInstance.render(mtx.fields);
                 }
@@ -219,3 +269,22 @@ const Renderer = struct {
         _ = c.bgfx_frame(false);
     }
 };
+
+test "Chunk::index -> xyz -> index" {
+    const index = 1241;
+    const pos = Chunk.indexToXYZ(index);
+    const newIndex = Chunk.xyzToIndex(pos.x, pos.y, pos.z);
+    try std.testing.expect(index == newIndex);
+}
+
+test "Chunk::xyz -> index -> xyz" {
+    const pos = .{.x = 5, .y = 10, .z = 32};
+    const index = Chunk.xyzToIndex(pos.x, pos.y, pos.z);
+    const newPos = Chunk.indexToXYZ(index);
+
+    try std.testing.expect(
+        pos.x == newPos.x
+            and pos.y == newPos.y
+            and pos.z == newPos.z
+    );
+}
