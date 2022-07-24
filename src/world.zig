@@ -18,11 +18,21 @@ pub const World = struct {
         var x: usize = 0;
         var y: usize = 0;
         var z: usize = 0;
+
+        var rnd = std.rand.DefaultPrng.init(@intCast(u64, std.time.nanoTimestamp() >> 64));
         while (x < 32) {
-            if (y == 14) {
+            if (y > 14) {
+                chunk[x][y][z] = cube.CubeType.count;
+            } else if (y == 14) {
                 chunk[x][y][z] = cube.CubeType.grass;
             } else {
-                chunk[x][y][z] = cube.CubeType.count;
+                const dirtChance = @intToFloat(f32, y) / 14;
+                const roll = rnd.random().float(f32);
+                if (roll <= dirtChance) {
+                    chunk[x][y][z] = cube.CubeType.dirt;
+                } else {
+                    chunk[x][y][z] = cube.CubeType.cobblestone;
+                }
             }
 
             z += 1;
