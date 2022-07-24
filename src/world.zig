@@ -107,12 +107,15 @@ const Chunk = struct {
     }
 
     pub fn isVisible(self: *const Self, x: usize, y: usize, z: usize) bool {
+        // TODO: represent visibility across the boundaries of chunks
+
         if (x == 0 or x == Self.WIDTH - 1
                 or y == 0 or y == Self.HEIGHT - 1
                 or z == 0 or z == Self.DEPTH - 1) {
             return true;
         }
 
+        // TODO: make this better. inline for loop?
         if (self.getXYZ(x - 1, y, z) == cube.CubeType.count) {
             return true;
         }
@@ -273,6 +276,7 @@ const Renderer = struct {
         c.bgfx_set_view_rect(0, 0, 0, @intCast(u16, width), @intCast(u16, height));
         c.bgfx_touch(0);
 
+        // TODO: figuring out how to render more things on the screen at once, e.g. instancing?
         var x: usize = 0;
         while (x < Chunk.WIDTH) : (x += 1) {
             var y: usize = 0;
