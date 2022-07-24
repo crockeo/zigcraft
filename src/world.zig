@@ -22,12 +22,12 @@ pub const World = struct {
             while (y < Chunk.HEIGHT) : (y += 1) {
                 var z: usize = 0;
                 while (z < Chunk.DEPTH) : (z += 1) {
-                    if (y > Chunk.HEIGHT / 2) {
+                    if (y > Chunk.HEIGHT / 2 - 2) {
                         continue;
-                    } else if (y == Chunk.HEIGHT / 2) {
+                    } else if (y == Chunk.HEIGHT / 2 - 2) {
                         chunk.setXYZ(x, y, z, cube.CubeType.grass);
                     } else {
-                        const dirtChance = @intToFloat(f32, y) / @intToFloat(f32, Chunk.HEIGHT) / 2;
+                        const dirtChance = (@intToFloat(f32, y) - 2) / @intToFloat(f32, Chunk.HEIGHT) / 2;
                         const roll = rnd.random().float(f32);
                         if (roll <= dirtChance) {
                             chunk.setXYZ(x, y, z, cube.CubeType.dirt);
@@ -104,6 +104,35 @@ const Chunk = struct {
     pub fn get(self: *Self, index: usize) cube.CubeType {
         const pos = Self.indexToXYZ(index);
         return self.cubes[pos.x][pos.y][pos.z];
+    }
+
+    pub fn isVisible(self: *const Self, x: usize, y: usize, z: usize) bool {
+        if (x == 0 or x == Self.WIDTH - 1
+                or y == 0 or y == Self.HEIGHT - 1
+                or z == 0 or z == Self.DEPTH - 1) {
+            return true;
+        }
+
+        if (self.getXYZ(x - 1, y, z) == cube.CubeType.count) {
+            return true;
+        }
+        if (self.getXYZ(x + 1, y, z) == cube.CubeType.count) {
+            return true;
+        }
+        if (self.getXYZ(x, y - 1, z) == cube.CubeType.count) {
+            return true;
+        }
+        if (self.getXYZ(x, y + 1, z) == cube.CubeType.count) {
+            return true;
+        }
+        if (self.getXYZ(x, y, z - 1) == cube.CubeType.count) {
+            return true;
+        }
+        if (self.getXYZ(x, y, z + 1) == cube.CubeType.count) {
+            return true;
+        }
+
+        return false;
     }
 
     fn indexToXYZ(index: usize) struct{x: usize, y: usize, z: usize} {
@@ -250,6 +279,10 @@ const Renderer = struct {
             while (y < Chunk.HEIGHT) : (y += 1) {
                 var z: usize = 0;
                 while (z < Chunk.DEPTH) : (z += 1) {
+                    if (!world.chunk.isVisible(x, y, z)) {
+                        continue;
+                    }
+
                     const cubeType = world.chunk.getXYZ(x, y, z);
                     if (cubeType == cube.CubeType.count) {
                         continue;
