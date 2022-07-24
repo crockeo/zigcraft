@@ -354,6 +354,7 @@ const Renderer = struct {
         c.bgfx_touch(0);
 
         // TODO: figuring out how to render more things on the screen at once, e.g. instancing?
+        // some bgfx docs on this: https://bkaradzic.github.io/bgfx/bgfx.html#instance-buffer
         var iter = world.chunk_store.iterator();
         while (iter.next()) |chunk_info| {
             const x_offset = @intToFloat(f32, chunk_info.x_offset) * Chunk.WORLD_WIDTH;
