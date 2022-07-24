@@ -6,6 +6,12 @@ const cube = @import("./cube.zig");
 const shader = @import("./shader.zig");
 const events = @import("./events.zig");
 
+const ChunkInfo = struct {
+    chunk: *const Chunk,
+    x_offset: i64,
+    z_offset: i64,
+};
+
 pub const World = struct {
     renderer: Renderer,
     now: f32,
@@ -31,6 +37,7 @@ pub const World = struct {
     pub fn update(self: *World, input: *events.InputState, dt: f32) !void {
         self.now += dt;
         self.player.update(input, dt);
+        _ = try self.currentChunk();
     }
 
     pub fn render(self: *World, window_width: u32, window_height: u32) !void {
@@ -41,12 +48,6 @@ pub const World = struct {
             self,
         );
     }
-
-    const ChunkInfo = struct {
-        chunk: *const Chunk,
-        x_offset: i64,
-        z_offset: i64,
-    };
 
     fn currentChunk(self: *World) !ChunkInfo {
         const x = @floatToInt(i64, self.player.pos.x / (Chunk.WORLD_WIDTH / 2));
@@ -89,6 +90,23 @@ const ChunkStore = struct {
 
     pub fn unload(_: *Self, _: *Chunk) void {
         // TODO: make this actually do something once we save these to disk
+    }
+
+    const Iterator = struct {
+        iter: ChunkStore.HashMap.Iterator,
+
+        pub fn next(self: *Iterator) ?ChunkInfo {
+            const inner = self.iter.next() orelse return null;
+            return ChunkInfo{
+                .chunk = inner.value_ptr,
+                .x_offset = inner.key_ptr.x,
+                .z_offset = inner.key_ptr.z,
+            };
+        }
+    };
+
+    pub fn iterator(self: *const Self) Iterator {
+        return Iterator{.iter = self.cache.iterator()};
     }
 };
 
@@ -336,32 +354,34 @@ const Renderer = struct {
         c.bgfx_touch(0);
 
         // TODO: figuring out how to render more things on the screen at once, e.g. instancing?
-        const chunk_info = try world.currentChunk();
-        const x_offset = @intToFloat(f32, chunk_info.x_offset) * Chunk.WORLD_WIDTH;
-        const z_offset = @intToFloat(f32, chunk_info.z_offset) * Chunk.WORLD_DEPTH;
+        var iter = world.chunk_store.iterator();
+        while (iter.next()) |chunk_info| {
+            const x_offset = @intToFloat(f32, chunk_info.x_offset) * Chunk.WORLD_WIDTH;
+            const z_offset = @intToFloat(f32, chunk_info.z_offset) * Chunk.WORLD_DEPTH;
 
-        var x: usize = 0;
-        while (x < Chunk.WIDTH) : (x += 1) {
-            var y: usize = 0;
-            while (y < Chunk.HEIGHT) : (y += 1) {
-                var z: usize = 0;
-                while (z < Chunk.DEPTH) : (z += 1) {
-                    if (!chunk_info.chunk.isVisible(x, y, z)) {
-                        continue;
+            var x: usize = 0;
+            while (x < Chunk.WIDTH) : (x += 1) {
+                var y: usize = 0;
+                while (y < Chunk.HEIGHT) : (y += 1) {
+                    var z: usize = 0;
+                    while (z < Chunk.DEPTH) : (z += 1) {
+                        if (!chunk_info.chunk.isVisible(x, y, z)) {
+                            continue;
+                        }
+
+                        const cube_type = chunk_info.chunk.getXYZ(x, y, z);
+                        if (cube_type == cube.CubeType.count) {
+                            continue;
+                        }
+
+                        const cubeInstance = self.registry.getCube(cube_type);
+                        const mtx = zlm.Mat4.createTranslationXYZ(
+                            x_offset + (@intToFloat(f32, x) - @intToFloat(f32, Chunk.WIDTH) / 2.0) * 2.0,
+                            (@intToFloat(f32, y) - @intToFloat(f32, Chunk.HEIGHT) / 2.0) * 2.0,
+                            z_offset + (@intToFloat(f32, z) - @intToFloat(f32, Chunk.DEPTH) / 2.0) * 2.0,
+                        );
+                        cubeInstance.render(mtx.fields);
                     }
-
-                    const cube_type = chunk_info.chunk.getXYZ(x, y, z);
-                    if (cube_type == cube.CubeType.count) {
-                        continue;
-                    }
-
-                    const cubeInstance = self.registry.getCube(cube_type);
-                    const mtx = zlm.Mat4.createTranslationXYZ(
-                        x_offset + (@intToFloat(f32, x) - @intToFloat(f32, Chunk.WIDTH) / 2.0) * 2.0,
-                        (@intToFloat(f32, y) - @intToFloat(f32, Chunk.HEIGHT) / 2.0) * 2.0,
-                        z_offset + (@intToFloat(f32, z) - @intToFloat(f32, Chunk.DEPTH) / 2.0) * 2.0,
-                    );
-                    cubeInstance.render(mtx.fields);
                 }
             }
         }
