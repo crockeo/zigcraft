@@ -157,7 +157,7 @@ const Renderer = struct {
 
     pub fn render(
         self: *const Renderer,
-        now: f32,
+        _: f32,  // now
         width: u32,
         height: u32,
         world: *const World,
@@ -199,29 +199,6 @@ const Renderer = struct {
                 }
             }
         }
-
-        const cubes = [_]*const cube.Cube{
-            self.registry.getCube(cube.CubeType.grass),
-            self.registry.getCube(cube.CubeType.cobblestone),
-            self.registry.getCube(cube.CubeType.dirt),
-        };
-        var i: usize = 0;
-        while (i < cubes.len) {
-            var mtx = zlm.Mat4.createAngleAxis(
-                zlm.Vec3.unitX,
-                now * 0.7 + @intToFloat(f32, i),
-            ).mul(zlm.Mat4.createAngleAxis(
-                zlm.Vec3.unitY,
-                now + @intToFloat(f32, i),
-            )).mul(zlm.Mat4.createTranslationXYZ(
-                (@intToFloat(f32, i) - 1) * 5.0,
-                0,
-                0,
-            ));
-            cubes[i].render(mtx.fields);
-            i += 1;
-        }
-
 
         _ = c.bgfx_frame(false);
     }
