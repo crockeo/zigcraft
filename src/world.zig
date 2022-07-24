@@ -15,19 +15,24 @@ pub const World = struct {
 
     pub fn init(allocator: std.mem.Allocator) !World {
         var chunk: [32][32][32]cube.CubeType = undefined;
-        var i: usize = 0;
-        var j: usize = 0;
-        var k: usize = 0;
-        while (i < 32) {
-            chunk[i][j][k] = cube.CubeType.count;
-            k += 1;
-            if (k >= 32) {
-                k = 0;
-                j += 1;
+        var x: usize = 0;
+        var y: usize = 0;
+        var z: usize = 0;
+        while (x < 32) {
+            if (y == 14) {
+                chunk[x][y][z] = cube.CubeType.grass;
+            } else {
+                chunk[x][y][z] = cube.CubeType.count;
             }
-            if (j >= 32) {
-                j = 0;
-                i += 1;
+
+            z += 1;
+            if (z >= 32) {
+                z = 0;
+                y += 1;
+            }
+            if (y >= 32) {
+                y = 0;
+                x += 1;
             }
         }
 
@@ -54,8 +59,7 @@ pub const World = struct {
             self.now,
             window_width,
             window_height,
-            self.player.pos,
-            self.player.getRotMatrix(),
+            self,
         );
     }
 
@@ -156,20 +160,18 @@ const Renderer = struct {
         now: f32,
         width: u32,
         height: u32,
-        pos: zlm.Vec3,
-        rot: zlm.Mat4,
+        world: *const World,
     ) void {
-        const lookAt4 = zlm.Vec4.unitZ.transform(rot);
-        const lookAt = pos.add(zlm.Vec3.new(lookAt4.x, lookAt4.y, lookAt4.z));
-
+        const lookAt4 = zlm.Vec4.unitZ.transform(world.player.getRotMatrix());
+        const lookAt = world.player.pos.add(zlm.Vec3.new(lookAt4.x, lookAt4.y, lookAt4.z));
 
         const view = zlm.Mat4.createLookAt(
             lookAt,
-            pos,
+            world.player.pos,
             zlm.Vec3.unitY,
         );
         const proj = zlm.Mat4.createPerspective(
-            std.math.pi / 2.0,
+            std.math.pi / 3.0,
             @intToFloat(f32, width) / @intToFloat(f32, height),
             0.1,
             100.0,
@@ -178,6 +180,25 @@ const Renderer = struct {
         c.bgfx_set_view_transform(0, &view.fields, &proj.fields);
         c.bgfx_set_view_rect(0, 0, 0, @intCast(u16, width), @intCast(u16, height));
         c.bgfx_touch(0);
+
+        // TODO: hate this syntax. how fix?
+        for (world.chunk) |x, xi| {
+            for (x) |y, yi| {
+                for (y) |cubeType, zi| {
+                    if (cubeType == cube.CubeType.count) {
+                        continue;
+                    }
+
+                    const cubeInstance = self.registry.getCube(cubeType);
+                    const mtx = zlm.Mat4.createTranslationXYZ(
+                        (@intToFloat(f32, xi) - 16.0) * 2.0,
+                        (@intToFloat(f32, yi) - 16.0) * 2.0,
+                        (@intToFloat(f32, zi) - 16.0) * 2.0,
+                    );
+                    cubeInstance.render(mtx.fields);
+                }
+            }
+        }
 
         const cubes = [_]*const cube.Cube{
             self.registry.getCube(cube.CubeType.grass),
