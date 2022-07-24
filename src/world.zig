@@ -11,45 +11,21 @@ pub const World = struct {
     now: f32,
 
     player: Player,
-    chunk: Chunk,
+    chunk_store: ChunkStore,
 
     pub fn init(allocator: std.mem.Allocator) !World {
-        var chunk = Chunk.init();
-        var rnd = std.rand.DefaultPrng.init(@intCast(u64, std.time.nanoTimestamp() >> 64));
-        var x: usize = 0;
-        while (x < Chunk.WIDTH) : (x += 1) {
-            var y: usize = 0;
-            while (y < Chunk.HEIGHT) : (y += 1) {
-                var z: usize = 0;
-                while (z < Chunk.DEPTH) : (z += 1) {
-                    if (y > Chunk.HEIGHT / 2 - 2) {
-                        continue;
-                    } else if (y == Chunk.HEIGHT / 2 - 2) {
-                        chunk.setXYZ(x, y, z, cube.CubeType.grass);
-                    } else {
-                        const dirtChance = (@intToFloat(f32, y) - 2) / @intToFloat(f32, Chunk.HEIGHT) / 2;
-                        const roll = rnd.random().float(f32);
-                        if (roll <= dirtChance) {
-                            chunk.setXYZ(x, y, z, cube.CubeType.dirt);
-                        } else {
-                            chunk.setXYZ(x, y, z, cube.CubeType.cobblestone);
-                        }
-                    }
-                }
-            }
-        }
-
         return World{
             .renderer = try Renderer.init(allocator),
             .now = 0.0,
 
             .player = Player.init(),
-            .chunk = chunk,
+            .chunk_store = ChunkStore.init(allocator),
         };
     }
 
-    pub fn deinit(self: *const World) void {
+    pub fn deinit(self: *World) void {
         self.renderer.deinit();
+        self.chunk_store.deinit();
     }
 
     pub fn update(self: *World, input: *events.InputState, dt: f32) !void {
@@ -57,13 +33,62 @@ pub const World = struct {
         self.player.update(input, dt);
     }
 
-    pub fn render(self: *const World, window_width: u32, window_height: u32) !void {
-        self.renderer.render(
+    pub fn render(self: *World, window_width: u32, window_height: u32) !void {
+        try self.renderer.render(
             self.now,
             window_width,
             window_height,
             self,
         );
+    }
+
+    const ChunkInfo = struct {
+        chunk: *const Chunk,
+        x_offset: i64,
+        z_offset: i64,
+    };
+
+    fn currentChunk(self: *World) !ChunkInfo {
+        const x = @floatToInt(i64, self.player.pos.x / (Chunk.WORLD_WIDTH / 2));
+        const z = @floatToInt(i64, self.player.pos.z / (Chunk.WORLD_DEPTH / 2));
+        return ChunkInfo{
+            .chunk = try self.chunk_store.load(x, z),
+            .x_offset = x,
+            .z_offset = z,
+        };
+    }
+};
+
+const ChunkStore = struct {
+    const Self = @This();
+
+    const Index: type = i64;
+    const HashMap: type = std.AutoHashMap(struct{x: Index, z: Index}, Chunk);
+    cache: ChunkStore.HashMap,
+
+    pub fn init(allocator: std.mem.Allocator) Self {
+        return .{
+            .cache = ChunkStore.HashMap.init(allocator),
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.cache.deinit();
+    }
+
+    pub fn load(self: *Self, x: Index, z: Index) !*Chunk {
+        const key = .{.x = x, .z = z};
+        if (!self.cache.contains(key)) {
+            var chunk = Chunk.init();
+            chunk.randomize();
+            try self.cache.put(key, chunk);
+        }
+
+        return self.cache.getPtr(key) orelse return error.InvariantViolated;
+    }
+
+    pub fn unload(_: *Self, _: *Chunk) void {
+        // TODO: make this actually do something once we save these to disk
     }
 };
 
@@ -74,6 +99,10 @@ const Chunk = struct {
     const HEIGHT: usize = 128;
     const DEPTH: usize = 64;
     const CHUNK_LEN: usize = Self.WIDTH * Self.HEIGHT * Self.DEPTH;
+
+    const WORLD_WIDTH: f32 = @intToFloat(f32, Self.WIDTH) * 2.0;
+    const WORLD_HEIGHT: f32 = @intToFloat(f32, Self.HEIGHT) * 2.0;
+    const WORLD_DEPTH: f32 = @intToFloat(f32, Self.DEPTH) * 2.0;
 
     cubes: [Self.WIDTH][Self.HEIGHT][Self.DEPTH]cube.CubeType,
 
@@ -88,13 +117,39 @@ const Chunk = struct {
         return self;
     }
 
-    pub fn setXYZ(self: *Self, x: usize, y: usize, z: usize, cubeType: cube.CubeType) void {
-        self.cubes[x][y][z] = cubeType;
+    pub fn randomize(self: *Self) void {
+        var rnd = std.rand.DefaultPrng.init(@intCast(u64, std.time.nanoTimestamp()));
+        var x: usize = 0;
+        while (x < Self.WIDTH) : (x += 1) {
+            var y: usize = 0;
+            while (y < Self.HEIGHT) : (y += 1) {
+                var z: usize = 0;
+                while (z < Self.DEPTH) : (z += 1) {
+                    if (y > Self.HEIGHT / 2 - 2) {
+                        continue;
+                    } else if (y == Self.HEIGHT / 2 - 2) {
+                        self.setXYZ(x, y, z, cube.CubeType.grass);
+                    } else {
+                        const dirtChance = (@intToFloat(f32, y) - 2) / @intToFloat(f32, Self.HEIGHT) / 2;
+                        const roll = rnd.random().float(f32);
+                        if (roll <= dirtChance) {
+                            self.setXYZ(x, y, z, cube.CubeType.dirt);
+                        } else {
+                            self.setXYZ(x, y, z, cube.CubeType.cobblestone);
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    pub fn set(self: *Self, index: usize, cubeType: cube.CubeType) void {
+    pub fn setXYZ(self: *Self, x: usize, y: usize, z: usize, cube_type: cube.CubeType) void {
+        self.cubes[x][y][z] = cube_type;
+    }
+
+    pub fn set(self: *Self, index: usize, cube_type: cube.CubeType) void {
         const pos = Self.indexToXYZ(index);
-        self.cubes[pos.x][pos.y][pos.z] = cubeType;
+        self.cubes[pos.x][pos.y][pos.z] = cube_type;
     }
 
     pub fn getXYZ(self: *const Self, x: usize, y: usize, z: usize) cube.CubeType {
@@ -108,6 +163,10 @@ const Chunk = struct {
 
     pub fn isVisible(self: *const Self, x: usize, y: usize, z: usize) bool {
         // TODO: represent visibility across the boundaries of chunks
+
+        // TODO: do fancy math around the current FOV of the user,
+        // the angle they're facing at,
+        // and which blocks could technically be visible
 
         if (x == 0 or x == Self.WIDTH - 1
                 or y == 0 or y == Self.HEIGHT - 1
@@ -255,8 +314,8 @@ const Renderer = struct {
         _: f32,  // now
         width: u32,
         height: u32,
-        world: *const World,
-    ) void {
+        world: *World,
+    ) !void {
         const lookAt4 = zlm.Vec4.unitZ.transform(world.player.getRotMatrix());
         const lookAt = world.player.pos.add(zlm.Vec3.new(lookAt4.x, lookAt4.y, lookAt4.z));
 
@@ -277,26 +336,30 @@ const Renderer = struct {
         c.bgfx_touch(0);
 
         // TODO: figuring out how to render more things on the screen at once, e.g. instancing?
+        const chunk_info = try world.currentChunk();
+        const x_offset = @intToFloat(f32, chunk_info.x_offset) * Chunk.WORLD_WIDTH;
+        const z_offset = @intToFloat(f32, chunk_info.z_offset) * Chunk.WORLD_DEPTH;
+
         var x: usize = 0;
         while (x < Chunk.WIDTH) : (x += 1) {
             var y: usize = 0;
             while (y < Chunk.HEIGHT) : (y += 1) {
                 var z: usize = 0;
                 while (z < Chunk.DEPTH) : (z += 1) {
-                    if (!world.chunk.isVisible(x, y, z)) {
+                    if (!chunk_info.chunk.isVisible(x, y, z)) {
                         continue;
                     }
 
-                    const cubeType = world.chunk.getXYZ(x, y, z);
-                    if (cubeType == cube.CubeType.count) {
+                    const cube_type = chunk_info.chunk.getXYZ(x, y, z);
+                    if (cube_type == cube.CubeType.count) {
                         continue;
                     }
 
-                    const cubeInstance = self.registry.getCube(cubeType);
+                    const cubeInstance = self.registry.getCube(cube_type);
                     const mtx = zlm.Mat4.createTranslationXYZ(
-                        (@intToFloat(f32, x) - @intToFloat(f32, Chunk.WIDTH) / 2.0) * 2.0,
+                        x_offset + (@intToFloat(f32, x) - @intToFloat(f32, Chunk.WIDTH) / 2.0) * 2.0,
                         (@intToFloat(f32, y) - @intToFloat(f32, Chunk.HEIGHT) / 2.0) * 2.0,
-                        (@intToFloat(f32, z) - @intToFloat(f32, Chunk.DEPTH) / 2.0) * 2.0,
+                        z_offset + (@intToFloat(f32, z) - @intToFloat(f32, Chunk.DEPTH) / 2.0) * 2.0,
                     );
                     cubeInstance.render(mtx.fields);
                 }
