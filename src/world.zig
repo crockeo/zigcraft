@@ -106,6 +106,9 @@ const Player = struct {
         if (!input.isPressed(c.SDL_SCANCODE_W) and !input.isPressed(c.SDL_SCANCODE_S) and self.vel.z != 0) {
             const mul: f32 = if (self.vel.z > 0) -1.0 else 1.0;
             self.vel.z += mul * dt * acceleration;
+            if (std.math.absFloat(self.vel.z) > 2 * dt * acceleration) {
+                self.vel.z = 0;
+            }
         }
 
         if (input.isPressed(c.SDL_SCANCODE_A)) {
@@ -117,6 +120,9 @@ const Player = struct {
         if (!input.isPressed(c.SDL_SCANCODE_A) and !input.isPressed(c.SDL_SCANCODE_D) and self.vel.x != 0) {
             const mul: f32 = if (self.vel.x > 0) -1.0 else 1.0;
             self.vel.x += mul * dt * acceleration;
+            if (std.math.absFloat(self.vel.x) > 2 * dt * acceleration) {
+                self.vel.x = 0;
+            }
         }
 
         const lateral = self.vel.swizzle("x0z");
